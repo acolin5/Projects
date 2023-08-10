@@ -1,0 +1,164 @@
+ // CSUN FALL 22   COMP 182 
+ // Colinlstarr.java is Array implementation of lstinterface.java:  
+   
+   import java.util.*; 
+   import java.io.*; 
+     
+   // listinterface is an interface   
+   public class ColinH1 implements lstinterface {  
+    // class Variables 
+    int size = 0;
+    int count = 0;
+   // int size, count = 0, 
+    // arr[];   
+    String[] arr = new String[size];    
+        
+    // use prt for System.out to save typing 
+    PrintStream prt = System.out; 
+             
+    // Insert x at position p, for successful insertion: 
+    // Array should not be full and 1 <= p <= count+1 <= size 
+    public int insertlst(String x,  int p){ 
+      int i; // local variable 
+     prt.printf("\n\t\tInsert %4d at position %2d:", x, p); 
+     if (size == count || p < 1 || p > count+1){ 
+        prt.printf(" Failed insertion.");      
+        return 0;  // invalid insertion 
+      } // end if 
+         
+      // shift array elements to right from position count downto p  
+      for (i = count ; i >= p ; i--)   
+       arr[i+1] = arr[i]; 
+     // end for 
+                
+     arr[p] = x;   // insert x at position p 
+     count++; // increment no. of elements. 
+     prt.printf(" Successful insertion."); 
+     return 1; 
+   } // end insertlst 
+        
+    // Delete element at position p, for successful deletion: 
+   // List should not be empty and 1 <= p <= count 
+    public int deletelst(int p){ 
+     int i; // local variable 
+     prt.printf("\n\t\tDelete element at position %2d:", p); 
+      if ( count == 0 || p < 1 || p > count){  
+        prt.printf(" Invalid position for deletion."); 
+        return 0;   // invalid deletion 
+      } // end if 
+             
+     // Shift array elements from position p + 1 to count to left 
+      for (i = p ; i < count ; i++)   
+       arr[i] = arr[i+1]; 
+      // end for 
+         
+      count --;   // decrement no. of list elements 
+      prt.printf(" Successful deletion.");   
+      return 1;  // successful deletion 
+    } // end deletelst 
+         
+    // Sequential search for x in the list 
+    // if successful return position of x in the 
+    // list otherwise return 0; 
+    public int searchlst(String x){ 
+      prt.printf("\n\t\tSearch for %4:", x); 
+      // Complete the rest of the method 
+      return 0; // x is not found 
+    } // end searchlst 
+           
+    // Print list elements formatted  
+    public void prtlst(){ 
+      int i;  // local variable 
+      prt.printf("\n\tList contents: "); 
+      for (i = 1; i <= count; i++)  
+        prt.printf("%4d, ", arr[i]); 
+      // enf for 
+    } // end prtlst 
+   
+    // insert, delete and search in the list 
+    private void process(String fn){ 
+      int j, nIns, nSrch, nDel, k, p;  // local variables 
+       String x;
+     prt.printf("\tArray implementation of integer list, gets input"+ 
+      "file name from program argument, then reads:"+ 
+      "\n\tinteger array size,\n\tinteger No. of elements to insert"+ 
+      " followed by elements to insert and their positions,"+ 
+      "\n\tinteger No. of elements to search followed by element to"+ 
+      "search"+ 
+      "\n\tinteger No. of elements to delete followed by position of"+ 
+      "elements to delete" +      
+      "\n\t\tTo compile: javac Colinlstarr.java" + 
+      "\n\t\tTo execute: java  Colinlstarr inputfilename");     
+             
+      try{   
+        // open input file 
+      Scanner inf = new Scanner(new File(fn));  
+              
+        //read array size 
+        size = inf.nextInt(); 
+        // Allocate Space for array         
+        arr = new String[size+1];// index 0 is not used 
+        prt.printf("\n\tCreating an array of size %3d:",size); 
+               
+        //read no. of elements to insert 
+      nIns = inf.nextInt();             
+      prt.printf("\n\n\tInsert %d elements in the list.", nIns); 
+      for(j = 1; j <= nIns; j++){ 
+        x = inf.nextLine();   // read x professor said should not be .nextLine
+       // p = inf.nextInt();  // read position  
+        k = insertSorted(x); //insert x at position p 
+      } // end for 
+      prtlst();//print  list elements 
+           
+     //read no. of elements to search in list 
+      nSrch = inf.nextInt();  
+      prt.printf("\n\n\tSearch for %d elements in list.", nSrch); 
+      for(j = 1; j <= nSrch; j++){ 
+        x = inf.nextLine(); // read x to search 
+        k = searchSorted(x);  // Search for x 
+      }// end for   
+  
+      //read no. of positions to delete from list 
+      nDel = inf.nextInt();  
+      prt.printf("\n\n\tDelete %d elements from list.", nDel); 
+      for(j = 1; j <= nDel; j++){ 
+        p = inf.nextInt();   // read position 
+        k = deleteSorted(x);    // delete element at position p 
+      }// end for 
+      prtlst();//print list elements 
+  
+      // close input file      
+      inf.close();    
+   }catch (Exception e){prt.printf("\n\tRead Error! %s", e);} 
+  } // end process
+      
+      
+   
+       
+  // main method 
+  public static void main(String args[]) throws Exception{ 
+    // declare local variables 
+    int cnt = args.length; // get no. of arguments 
+    String fname; 
+  
+   //create an instance of a class 
+    Colinlstarr lst = new Colinlstarr();     
+ 
+    // get no. of  arguments     
+    cnt = args.length;  
+             
+    if (cnt < 1){ 
+      System.out.printf("\n\n\tOOPS Invalid No. of aguments! EXIT.\n"); 
+     return; 
+    } // end if 
+             
+    // get input file name 
+    fname = args[0];  
+     
+    // Call process method 
+   lst.process(fname); 
+     
+    System.out.printf("\n\n\tAuthor: A. Colin Date: %s\n", 
+    java.time.LocalDate.now());  
+  } // end main 
+ } // end class Colinlstarr 
