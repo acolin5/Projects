@@ -1,0 +1,527 @@
+package com.airline.reservation;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+import java.awt.*;
+import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+
+public class AirlineMainMenu {
+   private static final String DB_URL = "jdbc:mysql://127.0.0.1:3306/jnadb";
+   private static final String DB_USER = "root";
+   private static final String DB_PASSWORD = "123456789";
+   private String loggedInUserEmail;
+
+
+   public static void main(String[] args) {
+      SwingUtilities.invokeLater(
+         () -> {
+            try {
+               UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+               new AirlineMainMenu().displayMainMenu();
+            } catch (Exception e) {
+               e.printStackTrace();
+            }
+         });
+   }
+   private JFrame frame;
+
+   private void displayMainMenu() {
+      // Frame setup
+      JFrame frame = new JFrame("JNA Airlines Services");
+      frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+      frame.setSize(400, 300);
+      
+      // Main panel with BorderLayout
+      JPanel mainPanel = new JPanel(new BorderLayout());
+   
+      // Welcome label in the center
+      JLabel welcomeLabel = new JLabel("Welcome to JNA Airline Services", SwingConstants.CENTER);
+      Font currentFont = welcomeLabel.getFont();
+      Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.5F);
+      welcomeLabel.setFont(newFont);
+      mainPanel.add(welcomeLabel, BorderLayout.CENTER);
+      
+      // Button panel in the south with BoxLayout
+      JPanel buttonPanel = new JPanel();
+      buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
+   
+      JButton loginButton = new JButton("Login");
+      loginButton.addActionListener(e -> showLoginPage());
+      buttonPanel.add(loginButton);
+      
+      JButton createAccountButton = new JButton("Create Account");
+      createAccountButton.addActionListener(e -> createAccount());
+      buttonPanel.add(createAccountButton);
+      
+      JButton adminLoginButton = new JButton("Admin Login");
+      adminLoginButton.addActionListener(e -> showAdminLoginPage());
+      buttonPanel.add(adminLoginButton);
+      
+      JButton contactUsButton = new JButton("Contact Us");
+      contactUsButton.addActionListener(e -> contactUs());
+      buttonPanel.add(contactUsButton);
+   
+      // Add some space between buttons
+      loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+      createAccountButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+      adminLoginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+      contactUsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+   
+      mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+   
+      frame.add(mainPanel);
+   
+      frame.setLocationRelativeTo(null);  // Center the frame
+      frame.setVisible(true);
+   }
+   
+   public void createAccount(){
+    JFrame cAframe = new JFrame("JNA Airlines Services");
+    cAframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    cAframe.setSize(500, 400);
+    JPanel panel = new JPanel(new GridBagLayout());
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.insets = new Insets(10, 10, 10, 10);
+
+    // Header label
+    JLabel headerLabel = new JLabel("Account Sign Up Form:", SwingConstants.CENTER);
+    Font currentFont = headerLabel.getFont();
+    Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.5F);
+    headerLabel.setFont(newFont);
+    gbc.gridwidth = 2; // Span across two columns
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    panel.add(headerLabel, gbc);
+
+    JLabel firstNameLabel = new JLabel("First Name:");
+    gbc.gridwidth = 1; // Reset to default for other components
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    panel.add(firstNameLabel, gbc);
+    JTextField firstNameField = new JTextField(20);
+    gbc.gridx = 1;
+    panel.add(firstNameField, gbc);
+
+    JLabel lastNameLabel = new JLabel("Last Name:");
+    gbc.gridx = 0;
+    gbc.gridy = 2;
+    panel.add(lastNameLabel, gbc);
+    JTextField lastNameField = new JTextField(20);
+    gbc.gridx = 1;
+    panel.add(lastNameField, gbc);
+
+    JLabel emailLabel = new JLabel("Email:");
+    gbc.gridx = 0;
+    gbc.gridy = 3;
+    panel.add(emailLabel, gbc);
+    JTextField emailField = new JTextField(20);
+    gbc.gridx = 1;
+    panel.add(emailField, gbc);
+
+    JLabel passwordLabel = new JLabel("Password:");
+    gbc.gridx = 0;
+    gbc.gridy = 4;
+    panel.add(passwordLabel, gbc);
+    JPasswordField passwordField = new JPasswordField(20);
+    gbc.gridx = 1;
+    panel.add(passwordField, gbc);
+
+    JLabel accountTypeLabel = new JLabel("Account Type:");
+    gbc.gridx = 0;
+    gbc.gridy = 5;
+    panel.add(accountTypeLabel, gbc);
+    JComboBox<String> accountTypeComboBox = new JComboBox<>(new String[]{"Customer", "Administrator"});
+    gbc.gridx = 1;
+    panel.add(accountTypeComboBox, gbc);
+
+    JButton submitButton = new JButton("Create Account");
+    submitButton.addActionListener(e -> {
+        // Capture user input
+        String firstName = firstNameField.getText().trim();
+        String lastName = lastNameField.getText().trim();
+        String email = emailField.getText().trim();
+        String password = new String(passwordField.getPassword()).trim();
+        String accountType = (String) accountTypeComboBox.getSelectedItem();
+
+        if ("Administrator".equals(accountType)) {
+            // Prompt for admin code
+            String adminCode = JOptionPane.showInputDialog(cAframe, "Enter Admin Code:", "Admin Verification", JOptionPane.PLAIN_MESSAGE);
+
+            if (!verifyAdminCode(adminCode)) {
+                JOptionPane.showMessageDialog(cAframe, "Invalid Admin Code!", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+
+        // Stores account info into MySQL table if successful
+        try {
+            saveAccountToDatabase(firstName, lastName, email, password, accountType);
+            JOptionPane.showMessageDialog(cAframe, "Account created successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(cAframe, "Error saving account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    });
+
+    gbc.gridwidth = 2; // For the button to span two columns
+    gbc.gridx = 0;
+    gbc.gridy = 6;
+    panel.add(submitButton, gbc);
+
+    cAframe.add(panel);
+    cAframe.setLocationRelativeTo(null);
+    cAframe.setVisible(true);
+}
+
+   private void saveAccountToDatabase(String firstName, String lastName, String email, String password, String accountType) throws SQLException {
+      String table = "customerAccounts";
+      if ("Administrator".equals(accountType)) {
+         table = "adminAccounts";
+      }
+   
+      String sql = "INSERT INTO " + table + " (first_name, last_name, email, password) VALUES (?, ?, ?, ?)";
+   
+      try (Connection connection = getDatabaseConnection();
+         PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+      
+         preparedStatement.setString(1, firstName);
+         preparedStatement.setString(2, lastName);
+         preparedStatement.setString(3, email);
+         preparedStatement.setString(4, password);  // Note: Store passwords securely. This is just a basic example.
+      
+         preparedStatement.executeUpdate();
+      }
+   }
+
+    
+   private void showLoginPage() {
+      JDialog loginDialog = new JDialog();
+      loginDialog.setTitle("Login");
+    
+    // Set a preferred size for the dialog
+      loginDialog.setPreferredSize(new Dimension(400, 150));
+    
+    // Use GridBagLayout for better control over layout
+      loginDialog.setLayout(new GridBagLayout());
+      GridBagConstraints constraints = new GridBagConstraints();
+      constraints.fill = GridBagConstraints.HORIZONTAL;
+      constraints.insets = new Insets(5, 5, 5, 5); // padding
+   
+      JTextField emailField = new JTextField(20); // Set column size for better width
+      JPasswordField passwordField = new JPasswordField(20);
+      JButton submitButton = new JButton("Submit");
+   
+      constraints.gridx = 0;
+      constraints.gridy = 0;
+      loginDialog.add(new JLabel("Email:"), constraints);
+   
+      constraints.gridx = 1;
+      loginDialog.add(emailField, constraints);
+   
+      constraints.gridx = 0;
+      constraints.gridy = 1;
+      loginDialog.add(new JLabel("Password:"), constraints);
+   
+      constraints.gridx = 1;
+      loginDialog.add(passwordField, constraints);
+   
+      constraints.gridx = 1;
+      constraints.gridy = 2;
+      constraints.anchor = GridBagConstraints.EAST;
+      loginDialog.add(submitButton, constraints);
+   
+      submitButton.addActionListener(
+         e -> {
+            String email = emailField.getText();
+            String password = new String(passwordField.getPassword());
+            if (verifyLogin(email, password)) {
+               JOptionPane.showMessageDialog(loginDialog, "Login Successful!");
+               loginDialog.dispose();
+               userLoginPage();
+            } else {
+               JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+         });
+   
+      loginDialog.pack();
+      loginDialog.setLocationRelativeTo(null);
+      loginDialog.setVisible(true);
+   }
+      
+   private boolean verifyLogin(String email, String password) {
+        // Ideally, hash the password and then compare with the hashed password in DB.
+   
+      boolean loginSuccessful = false;
+   
+      try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+         String query = "SELECT COUNT(*) FROM customerAccounts WHERE email = ? AND password = ?";
+         PreparedStatement preparedStatement = connection.prepareStatement(query);
+         preparedStatement.setString(1, email);
+         preparedStatement.setString(2, password);
+      
+         ResultSet resultSet = preparedStatement.executeQuery();
+         if (resultSet.next()) {
+            int count = resultSet.getInt(1);
+            if (count > 0) {
+               loggedInUserEmail = email;
+               loginSuccessful = true;
+            }
+         }
+      } catch (SQLException ex) {
+         ex.printStackTrace();
+      }
+   
+      return loginSuccessful;
+   }
+   
+   private void showAdminLoginPage() {
+      JDialog loginDialog = new JDialog();
+      loginDialog.setTitle("Admin Login");
+      loginDialog.setPreferredSize(new Dimension(400, 150));
+   
+      JPanel panel = new JPanel(new GridBagLayout());
+      GridBagConstraints gbc = new GridBagConstraints();
+      gbc.fill = GridBagConstraints.HORIZONTAL;
+      gbc.insets = new Insets(5, 5, 5, 5);
+   
+      JLabel emailLabel = new JLabel("Email:");
+      JTextField emailField = new JTextField(20);
+      JLabel passwordLabel = new JLabel("Password:");
+      JPasswordField passwordField = new JPasswordField(20);
+      JButton submitButton = new JButton("Submit");
+   
+      gbc.gridx = 0; gbc.gridy = 0;
+      panel.add(emailLabel, gbc);
+   
+      gbc.gridx = 1;
+      panel.add(emailField, gbc);
+   
+      gbc.gridx = 0; gbc.gridy = 1;
+      panel.add(passwordLabel, gbc);
+   
+      gbc.gridx = 1;
+      panel.add(passwordField, gbc);
+   
+      gbc.gridx = 1; gbc.gridy = 2;
+      panel.add(submitButton, gbc);
+   
+      submitButton.addActionListener(
+         e -> {
+            String email = emailField.getText();
+            String password = new String(passwordField.getPassword());
+         
+            if (verifyAdminLogin(email, password)) {
+               JOptionPane.showMessageDialog(loginDialog, "Admin Login Successful!");
+               loginDialog.dispose();
+            } else {
+               JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+         });
+   
+      loginDialog.add(panel);
+      loginDialog.pack();
+      loginDialog.setLocationRelativeTo(null);
+      loginDialog.setVisible(true);
+   }
+
+   private boolean verifyAdminLogin(String email, String password) {
+       // Assuming you have your connection details and method to get them
+      Connection connection = null;
+      PreparedStatement preparedStatement = null;
+      ResultSet resultSet = null;
+   
+      try {
+         connection = getDatabaseConnection();
+         String sql = "SELECT * FROM AdminAccounts WHERE email = ? AND password = ?";
+         preparedStatement = connection.prepareStatement(sql);
+         preparedStatement.setString(1, email);
+         preparedStatement.setString(2, password);
+           
+         resultSet = preparedStatement.executeQuery();
+      
+         if (resultSet.next()) {
+            return true;
+         }
+      } catch (SQLException e) {
+         e.printStackTrace();
+      } finally {
+           // Close resources
+         try {
+            if (resultSet != null) resultSet.close();
+            if (preparedStatement != null) preparedStatement.close();
+            if (connection != null) connection.close();
+         } catch (SQLException e) {
+            e.printStackTrace();
+         }
+      }
+   
+      return false;
+   }
+
+   private Connection getDatabaseConnection() {
+       // Replace with your own MySQL connection details
+      String url = "jdbc:mysql://127.0.0.1:3306/jnadb";
+      String user = "root";
+      String pass = "123456789";
+       
+      try {
+         return DriverManager.getConnection(url, user, pass);
+      } catch (SQLException e) {
+         e.printStackTrace();
+         return null;
+      }
+   }
+   
+   private boolean verifyAdminCode(String code) {
+      Connection connection = null;
+      PreparedStatement preparedStatement = null;
+      ResultSet resultSet = null;
+   
+      try {
+         connection = getDatabaseConnection();
+         String sql = "SELECT * FROM specialAdminCodes WHERE code = ?";
+         preparedStatement = connection.prepareStatement(sql);
+         preparedStatement.setString(1, code);
+      
+         resultSet = preparedStatement.executeQuery();
+      
+         return resultSet.next();  // If there's a result, the code is correct
+      } catch (SQLException e) {
+         e.printStackTrace();
+         return false;
+      } finally {
+        // Close resources
+         try {
+            if (resultSet != null) resultSet.close();
+            if (preparedStatement != null) preparedStatement.close();
+            if (connection != null) connection.close();
+         } catch (SQLException e) {
+            e.printStackTrace();
+         }
+      }
+   }
+   
+   private void userLoginPage() {
+	   JFrame dashboardFrame = new JFrame("Main Menu");
+	    dashboardFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+	    dashboardFrame.setSize(400, 300);
+
+	    JLabel welcomeLabel = new JLabel("Welcome back!", SwingConstants.CENTER);
+	    Font currentFont = welcomeLabel.getFont();
+	    Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.5F);
+	    welcomeLabel.setFont(newFont);
+
+	    // Use GridBagLayout for optionsPanel
+	    JPanel optionsPanel = new JPanel(new GridBagLayout());
+	    GridBagConstraints gbc = new GridBagConstraints();
+
+	    JButton viewFlightsButton = new JButton("View Flights Available");
+	    viewFlightsButton.addActionListener(e -> {
+	        // TODO: JONATHAN SAID HE WOULD COMPLETE THIS SECTION
+	    });
+	    gbc.gridx = 0;
+	    gbc.gridy = 0;
+	    gbc.anchor = GridBagConstraints.CENTER; // Center alignment
+	    optionsPanel.add(viewFlightsButton, gbc);
+
+	    JButton cancelFlightButton = new JButton("Cancel Flight");
+	    cancelFlightButton.addActionListener(e -> {
+	        // TODO: JONATHAN SAID HE WOULD COMPLETE THIS SECTION
+	    });
+	    gbc.gridy = 1;
+	    optionsPanel.add(cancelFlightButton, gbc);
+
+	    JButton inboxButton = new JButton("Inbox");
+	    inboxButton.addActionListener(e -> {
+	        userInbox(loggedInUserEmail); //Once logged in, it will take them to this method. 
+	    });
+	    gbc.gridy = 2;
+	    optionsPanel.add(inboxButton, gbc);
+
+	    // Layout for main panel
+	    JPanel mainPanel = new JPanel(new BorderLayout());
+	    mainPanel.add(welcomeLabel, BorderLayout.NORTH);
+	    mainPanel.add(optionsPanel, BorderLayout.SOUTH); // Place the optionsPanel towards the bottom
+
+	    dashboardFrame.add(mainPanel);
+
+	    dashboardFrame.setLocationRelativeTo(null);
+	    dashboardFrame.setVisible(true);
+	    } 
+   
+   private void userInbox(String userEmail) {
+	    // Create a JDialog (a type of window) for the inbox
+		    JDialog inboxDialog = new JDialog();
+		    inboxDialog.setTitle("Your Inbox");
+		    inboxDialog.setSize(700, 400);
+		    
+		    //Displays a column with the following:
+		    String[] columnNames = {"Your Flight", "Traveling From", "Destination", "Departure Time", "Arrival Time", "Status"};
+		    DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+		    JTable bookingsTable = new JTable(tableModel);
+
+		    try (Connection connection = getDatabaseConnection()) {
+		        String sql = "SELECT f.flight_code, f.origin, f.destination, f.departure_time, f.arrival_time, b.status " +
+		                     "FROM bookings b " +
+		                     "JOIN passengers p ON b.passenger_id = p.passenger_id " +
+		                     "JOIN flights f ON b.flight_id = f.flight_id " +
+		                     "WHERE p.email = ?";
+		                     
+		        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+		        preparedStatement.setString(1, userEmail);
+
+		        ResultSet resultSet = preparedStatement.executeQuery();
+		        while (resultSet.next()) {
+		            String flightCode = resultSet.getString("flight_code");
+		            String origin = resultSet.getString("origin");
+		            String destination = resultSet.getString("destination");
+		            Timestamp departureTime = resultSet.getTimestamp("departure_time");
+		            Timestamp arrivalTime = resultSet.getTimestamp("arrival_time");
+		            String status = resultSet.getString("status");
+
+		            tableModel.addRow(new Object[]{flightCode, origin, destination, departureTime, arrivalTime, status});
+		        }
+		    } catch (SQLException ex) {
+		        ex.printStackTrace();
+		        JOptionPane.showMessageDialog(inboxDialog, "Error fetching inbox: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+		    }
+
+		    JScrollPane scrollPane = new JScrollPane(bookingsTable);
+		    inboxDialog.add(scrollPane, BorderLayout.CENTER);
+
+		    inboxDialog.setLocationRelativeTo(null);
+		    inboxDialog.setVisible(true);
+		}
+   
+   private void contactUs() {
+    // Create a JDialog (a type of window) for the contact info
+      JDialog contactDialog = new JDialog(frame, "Contact Us", true);
+      contactDialog.setSize(300, 200);
+      contactDialog.setLayout(new BorderLayout());
+   
+    // Display contact information
+      JTextArea contactTextArea = new JTextArea();
+      contactTextArea.setText(
+            "JNA Airlines Services\n" +
+            "123 Airline Rd.\n" +
+            "Air City, AC 12345\n" +
+            "Phone: (123) 456-7890\n" +
+            "Email: contact@jnaairlines.com"
+         );
+      contactTextArea.setEditable(false);
+      contactDialog.add(new JScrollPane(contactTextArea), BorderLayout.CENTER);
+   
+    // Okay button to close the window
+      JButton okayButton = new JButton("Okay");
+      okayButton.addActionListener(e -> contactDialog.dispose());
+      JPanel buttonPanel = new JPanel();
+      buttonPanel.add(okayButton);
+      contactDialog.add(buttonPanel, BorderLayout.SOUTH);
+   
+      contactDialog.setLocationRelativeTo(frame);
+      contactDialog.setVisible(true);
+   }   
+}
