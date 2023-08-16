@@ -92,7 +92,7 @@ public class AirlineMainMenu {
     Font currentFont = headerLabel.getFont();
     Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.5F);
     headerLabel.setFont(newFont);
-    gbc.gridwidth = 2; // Span across two columns
+    gbc.gridwidth = 2; // Span across two columns https://javapointers.com/java/java-se/the-layout-manager-gridbag-layout/
     gbc.gridx = 0;
     gbc.gridy = 0;
     panel.add(headerLabel, gbc);
@@ -191,7 +191,6 @@ public class AirlineMainMenu {
          preparedStatement.setString(2, lastName);
          preparedStatement.setString(3, email);
          preparedStatement.setString(4, password);  // Note: Store passwords securely. This is just a basic example.
-      
          preparedStatement.executeUpdate();
       }
    }
@@ -308,24 +307,161 @@ public class AirlineMainMenu {
       gbc.gridx = 1; gbc.gridy = 2;
       panel.add(submitButton, gbc);
    
-      submitButton.addActionListener(
-         e -> {
-            String email = emailField.getText();
-            String password = new String(passwordField.getPassword());
-         
-            if (verifyAdminLogin(email, password)) {
-               JOptionPane.showMessageDialog(loginDialog, "Admin Login Successful!");
-               loginDialog.dispose();
-            } else {
-               JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-         });
+      submitButton.addActionListener(e -> {
+    	    String email = emailField.getText();
+    	    String password = new String(passwordField.getPassword());
+    	    
+    	    if (verifyAdminLogin(email, password)) {
+    	        JOptionPane.showMessageDialog(loginDialog, "Admin Login Successful!");
+    	        loginDialog.dispose();  // Close the login dialog
+    	    } else {
+    	        JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
+    	    }
+    	});
    
       loginDialog.add(panel);
       loginDialog.pack();
       loginDialog.setLocationRelativeTo(null);
       loginDialog.setVisible(true);
+   
    }
+   
+   private void showAdminMenu() {
+	    JDialog menuDialog = new JDialog();
+	    menuDialog.setTitle("Admin Menu");
+	    menuDialog.setPreferredSize(new Dimension(450, 200));
+
+	    JPanel panel = new JPanel(new GridBagLayout());
+	    GridBagConstraints gbc = new GridBagConstraints();
+	    gbc.fill = GridBagConstraints.HORIZONTAL;
+	    gbc.insets = new Insets(5, 5, 5, 5);
+
+	    // Month and Year dropdowns
+	    String[] months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+	    JComboBox<String> monthComboBox = new JComboBox<>(months);
+
+	    int currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
+	    Integer[] years = {currentYear - 1, currentYear};
+	    JComboBox<Integer> yearComboBox = new JComboBox<>(years);
+
+	    gbc.gridx = 0;
+	    gbc.gridy = 0;
+	    panel.add(new JLabel("From Month:"), gbc);
+	    gbc.gridx = 1;
+	    panel.add(monthComboBox, gbc);
+
+	    gbc.gridx = 2;  // Changed from 0 to 2 to make it beside the month
+	    panel.add(new JLabel("From Year:"), gbc);
+	    gbc.gridx = 3;  // Changed from 1 to 3 to make it beside the month dropdown
+	    panel.add(yearComboBox, gbc);
+
+	    JComboBox<String> toMonthComboBox = new JComboBox<>(months);
+	    JComboBox<Integer> toYearComboBox = new JComboBox<>(years);
+
+	    gbc.gridx = 0;
+	    gbc.gridy = 1;
+	    panel.add(new JLabel("To Month:"), gbc);
+	    gbc.gridx = 1;
+	    panel.add(toMonthComboBox, gbc);
+
+	    gbc.gridx = 2;  // Changed from 0 to 2 to make it beside the month
+	    panel.add(new JLabel("To Year:"), gbc);
+	    gbc.gridx = 3;  // Changed from 1 to 3 to make it beside the month dropdown
+	    panel.add(toYearComboBox, gbc);
+
+	    JButton viewGrossSalesButton = new JButton("View Gross Sales");
+	    viewGrossSalesButton.addActionListener(e -> {
+	        viewGrossSales(monthComboBox.getSelectedIndex() + 1, 
+	                       (Integer) yearComboBox.getSelectedItem(),
+	                       toMonthComboBox.getSelectedIndex() + 1,
+	                       (Integer) toYearComboBox.getSelectedItem());
+	    });
+
+	    gbc.gridwidth = 4;  // Span all four columns
+	    gbc.gridx = 0;      // Start from the first column
+	    gbc.gridy = 2;      // Set the row
+	    gbc.anchor = GridBagConstraints.CENTER;  // Center align
+
+	    panel.add(viewGrossSalesButton, gbc);
+
+	    JButton showFlightLogButton = new JButton("Show Flight Log Report");
+	    showFlightLogButton.addActionListener(e -> {
+	        showFlightLogReport();
+	    });
+
+	    gbc.gridy = 3;  // Set the row for the next button
+	    panel.add(showFlightLogButton, gbc);
+
+	    menuDialog.add(panel);
+	    menuDialog.pack();
+	    menuDialog.setLocationRelativeTo(null);
+	    menuDialog.setVisible(true);
+	    
+	      
+	    viewGrossSalesButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+	    showFlightLogButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+	}
+   
+   private void viewGrossSales(int fromMonth, int fromYear, int toMonth, int toYear) {
+	    try (Connection connection = getDatabaseConnection()) {
+	        String sql = "SELECT SUM(amount) as total_sales FROM payments WHERE (MONTH(payment_date) BETWEEN ? AND ?) AND (YEAR(payment_date) BETWEEN ? AND ?)";
+	        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+	        preparedStatement.setInt(1, fromMonth);
+	        preparedStatement.setInt(2, toMonth);
+	        preparedStatement.setInt(3, fromYear);
+	        preparedStatement.setInt(4, toYear);
+	        
+	        ResultSet resultSet = preparedStatement.executeQuery();
+	        if (resultSet.next()) {
+	            double totalSales = resultSet.getDouble("total_sales");
+	            JOptionPane.showMessageDialog(null, "Total Gross Sales from " + fromMonth + "/" + fromYear + " to " + toMonth + "/" + toYear + ": $" + totalSales);
+	        }
+	    } catch (SQLException ex) {
+	        ex.printStackTrace();
+	        JOptionPane.showMessageDialog(null, "Error fetching gross sales: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+	    }
+	}
+
+   private void showFlightLogReport() {
+	    JDialog reportDialog = new JDialog();
+	    reportDialog.setTitle("Flight Log Report");
+	    reportDialog.setSize(700, 400);
+	    
+	    // Create table to display flight details
+	    String[] columnNames = {"Flight Code", "Origin", "Destination", "Departure Time", "Arrival Time", "Day of Week"};
+	    DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+	    JTable flightLogTable = new JTable(tableModel);
+
+	    try (Connection connection = getDatabaseConnection()) {
+	        String sql = "SELECT f.flight_code, f.origin, f.destination, fs.departure_time, fs.arrival_time, fs.day_of_week " +
+	                     "FROM flightschedule fs " +
+	                     "JOIN flights f ON fs.flight_id = f.flight_id " +
+	                     "ORDER BY fs.day_of_week, fs.departure_time";
+	        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+	        ResultSet resultSet = preparedStatement.executeQuery();
+
+	        while (resultSet.next()) {
+	            String flightCode = resultSet.getString("flight_code");
+	            String origin = resultSet.getString("origin");
+	            String destination = resultSet.getString("destination");
+	            Time departureTime = resultSet.getTime("departure_time");
+	            Time arrivalTime = resultSet.getTime("arrival_time");
+	            String dayOfWeek = resultSet.getString("day_of_week");
+
+	            tableModel.addRow(new Object[]{flightCode, origin, destination, departureTime, arrivalTime, dayOfWeek});
+	        }
+	    } catch (SQLException ex) {
+	        ex.printStackTrace();
+	        JOptionPane.showMessageDialog(reportDialog, "Error fetching flight log report: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+	    }
+
+	    JScrollPane scrollPane = new JScrollPane(flightLogTable);
+	    reportDialog.add(scrollPane, BorderLayout.CENTER);
+
+	    reportDialog.setLocationRelativeTo(null);
+	    reportDialog.setVisible(true);
+	}
+
 
    private boolean verifyAdminLogin(String email, String password) {
        // Assuming you have your connection details and method to get them
@@ -343,6 +479,7 @@ public class AirlineMainMenu {
          resultSet = preparedStatement.executeQuery();
       
          if (resultSet.next()) {
+        	showAdminMenu();
             return true;
          }
       } catch (SQLException e) {
