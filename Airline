@@ -1,4 +1,4 @@
-package com.airline.reservation;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -12,52 +12,679 @@ import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Random;
+import java.time.Month;
+import java.sql.Date;
+import java.util.List;
 
+/* This project was prepared by JNA - Jonathan Santillan, Narek Karapetyan and Alejandro Colin for Professor Verma
+ * 
+ Databases needed to run this program:
+ 
+ SELECT `customeraccounts`.`id`,
+    `customeraccounts`.`first_name`,
+    `customeraccounts`.`last_name`,
+    `customeraccounts`.`email`,
+    `customeraccounts`.`password`
+ FROM `jnadb`.`customeraccounts`;
+
+SELECT `adminaccounts`.`id`,
+    `adminaccounts`.`first_name`,
+    `adminaccounts`.`last_name`,
+    `adminaccounts`.`email`,
+    `adminaccounts`.`password`
+FROM `jnadb`.`adminaccounts`;
+
+SELECT `specialadmincodes`.`id`,
+    `specialadmincodes`.`code`
+FROM `jnadb`.`specialadmincodes`;
+
+SELECT `passengers`.`passenger_id`,
+    `passengers`.`first_name`,
+    `passengers`.`last_name`,
+    `passengers`.`email`,
+    `passengers`.`phone_number`,
+    `passengers`.`reservation_number`,
+    `passengers`.`price`,
+    `passengers`.`payment_date`,
+    `passengers`.`origin`,
+    `passengers`.`destination`,
+    `passengers`.`departure_time`,
+    `passengers`.`total_seats`,
+    `passengers`.`flight_date`
+FROM `jnadb`.`passengers`;
+ * */
+
+
+ class Flight {
+	 private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, Double>() {
+		 private static final long serialVersionUID = 1L;
+	{
+	     put("JFK (NY) at 8:00AM-LAX (LA) at 3:30PM", 240.0);
+	     put("JFK (NY) at 8:00AM-ATL (GA) at 11:30AM", 160.0);
+	     put("JFK (NY) at 8:00AM-DFW (TX) at 5:00PM", 180.0);
+	     put("JFK (NY) at 8:00AM-ATL (GA) at 10:00PM", 150.0);
+	     put("JFK (NY) at 8:00AM-DFW (TX) at 10:00AM", 180.0);
+	     put("JFK (NY) at 8:00AM-LAX (LA) at 6:00AM", 220.0);
+	     
+	     put("MIA (FL) at 9:00AM-ATL (GA) at 10:00PM", 130.0);
+	     put("MIA (FL) at 9:00AM-LAX (LA) at 3:30PM", 210.0);
+	     put("MIA (FL) at 9:00AM-ATL (GA) at 11:30AM", 140.0);
+	     put("MIA (FL) at 9:00AM-DFW (TX) at 10:00AM", 120.0);
+	     put("MIA (FL) at 9:00AM-DFW (TX) at 10:00AM", 140.0);
+	     put("MIA (FL) at 9:00AM-LAX (LA) at 6:00AM", 200.0);
+
+	     put("SEA (WA) at 10:00AM-LAX (LA) at 3:30PM", 230.0);
+	     put("SEA (WA) at 10:00AM-ATL (GA) at 11:30AM", 220.0);
+	     put("SEA (WA) at 10:00AM-DFW (TX) at 5:00PM", 170.0);
+	     put("SEA (WA) at 10:00AM-ATL (GA) at 10:00PM", 210.0);
+	     put("SEA (WA) at 10:00AM-DFW (TX) at 10:00AM", 160.0);
+	     put("SEA (WA) at 10:00AM-LAX (LA) at 6:00AM", 190.0);
+
+	     put("ORD (IL) at 9:30AM-DFW (TX) at 10:00AM", 190.0);
+	     put("ORD (IL) at 9:30AM-LAX (LA) at 6:00AM", 250.0);
+	     put("ORD (IL) at 9:30AM-LAX (LA) at 3:30PM", 240.0);
+	     put("ORD (IL) at 9:30AM-DFW (TX) at 5:00PM", 180.0);
+	     put("ORD (IL) at 9:30AM-ATL (GA) at 11:30AM", 155.0);
+	     put("ORD (IL) at 12:00PM-LAX (LA) at 2:30PM", 225.0);
+	     put("ORD (IL) at 4:00PM-DFW (TX) at 6:00PM", 175.0);
+
+	     put("BOS (MA) at 8:30AM-DFW (TX) at 10:00AM", 200.0);
+	     put("BOS (MA) at 8:30AM-LAX (LA) at 6:00AM", 260.0);
+	     put("BOS (MA) at 8:30AM-LAX (LA) at 3:30PM", 250.0);
+	     put("BOS (MA) at 8:30AM-DFW (TX) at 5:00PM", 190.0);
+	     put("BOS (MA) at 8:30AM-ATL (GA) at 10:30AM", 165.0);
+	     put("BOS (MA) at 1:00PM-LAX (LA) at 3:30PM", 215.0);
+	     put("BOS (MA) at 8:30AM-ATL (GA) at 11:30AM", 155.0);
+
+	     put("SFO (CA) at 10:30AM-DFW (TX) at 10:00AM", 210.0);
+	     put("SFO (CA) at 10:30AM-LAX (LA) at 6:00AM", 220.0);
+	     put("SFO (CA) at 10:30AM-LAX (LA) at 3:30PM", 230.0);
+	     put("SFO (CA) at 10:30AM-ATL (GA) at 12:30PM", 205.0);
+	     put("SFO (CA) at 3:00PM-DFW (TX) at 5:00PM", 185.0);
+	 }};
+
+	public static HashMap<String, Double> getRoutePrices() {
+		return ROUTE_PRICES;
+	}
+	 //Layout has changed since phase 1. This is MUCH clear and user-friendly
+	   void showFlightSearchWindow() {
+	    JDialog flightSearchDialog = new JDialog();
+	    flightSearchDialog.setTitle("Search Flights");
+	   
+	    JPanel panel = new JPanel(new GridLayout(10, 2));
+	    
+	    // Option for one-way or round trip
+	    JLabel tripTypeLabel = new JLabel("Type of Trip:");
+	    JRadioButton oneWayRadioButton = new JRadioButton("One Way");
+	    JRadioButton roundTripRadioButton = new JRadioButton("Round Trip");
+	    ButtonGroup tripTypeGroup = new ButtonGroup();
+	    tripTypeGroup.add(oneWayRadioButton);
+	    tripTypeGroup.add(roundTripRadioButton);
+	    oneWayRadioButton.setSelected(true); 
+
+	    
+	    JLabel fromAirportLabel = new JLabel("From Airport:");
+	    JComboBox<String> fromAirportComboBox = new JComboBox<>(new String[]{"JFK (NY) at 8:00AM", "MIA (FL) at 9:00AM", "SEA (WA) at 10:00AM", "ORD (IL) at 9:30AM", "BOS (MA) at 8:30AM", "SFO (CA) at 10:30AM"}); 
+	    
+	    JLabel toAirportLabel = new JLabel("To Airport:");
+	    JComboBox<String> toAirportComboBox = new JComboBox<>(new String[]{"ATL (GA) at 10:00PM", "DFW (TX) at 10:00AM", "LAX (LA) at 6:00AM", "LAX (LA) at 3:30PM", "ATL (GA) at 11:30AM", "DFW (TX) at 5:00PM"}); 
+	    
+	    JLabel airlineLabel = new JLabel("Airline:");
+	    JComboBox<String> airlineComboBox = new JComboBox<>(new String[]{"American Airlines", "Delta Air Lines", "United Airlines"});
+	    
+	    JLabel departureDateLabel = new JLabel("Departure Date:");
+	    
+	    String[] days = new String[31];
+	    for (int i = 1; i <= 31; i++) {
+	        days[i-1] = Integer.toString(i);
+	    }
+	    JComboBox<String> dayComboBox = new JComboBox<>(days);
+	    
+	    String[] months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+	    JComboBox<String> monthComboBox = new JComboBox<>(months);
+	    
+	    int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+	    String[] years = new String[5];
+	    for (int i = 0; i < 5; i++) {
+	        years[i] = Integer.toString(currentYear + i);
+	    }
+	    JComboBox<String> yearComboBox = new JComboBox<>(years);
+	    
+	    JLabel returnDateLabel = new JLabel("Return Date:");
+	    JComboBox<String> returnDayComboBox = new JComboBox<>(days);
+	    JComboBox<String> returnMonthComboBox = new JComboBox<>(months);
+	    JComboBox<String> returnYearComboBox = new JComboBox<>(years);
+	    Date[] returnDateHolder = new Date[1];
+
+	    
+	    JPanel returnDatePanel = new JPanel(new FlowLayout());
+	    returnDatePanel.add(returnDayComboBox);
+	    returnDatePanel.add(returnMonthComboBox);
+	    returnDatePanel.add(returnYearComboBox);
+	    
+	    returnDateLabel.setVisible(false);
+	    returnDatePanel.setVisible(false);
+	    
+	    roundTripRadioButton.addActionListener(
+	    new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            returnDateLabel.setVisible(true);
+	            returnDatePanel.setVisible(true);
+	            flightSearchDialog.pack();
+	        }
+	    });
+	    
+	    oneWayRadioButton.addActionListener(
+	    new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            returnDateLabel.setVisible(false);
+	            returnDatePanel.setVisible(false);
+	            flightSearchDialog.pack();
+	        }
+	    });
+	    JLabel numberOfSeatsLabel = new JLabel("Number of Seats:");
+	    SpinnerNumberModel seatModel = new SpinnerNumberModel(1, 1, 1, 1); // Default is 1, minimum is 1, maximum is 9, step is 1
+	    JSpinner numberOfSeatsSpinner = new JSpinner(seatModel);
+	    
+	    
+	    JButton searchButton = new JButton("Search");
+	    searchButton.addActionListener(new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            String selectedDay = (String) dayComboBox.getSelectedItem();
+	            String selectedMonth = (String) monthComboBox.getSelectedItem();
+	            int selectedYear = Integer.parseInt((String) yearComboBox.getSelectedItem());
+	            int monthInt = Month.valueOf(selectedMonth.toUpperCase()).getValue();
+	            LocalDate selectedDate = LocalDate.of(selectedYear, monthInt, Integer.parseInt(selectedDay));
+	            
+	            // Convert selectedDate to sqlDate
+	            java.sql.Date sqlDate = java.sql.Date.valueOf(selectedDate);
+	            
+	            Flight selectedFlight = null; 
+	            String routeKey = fromAirportComboBox.getSelectedItem() + "-" + toAirportComboBox.getSelectedItem();
+	            Double computedPrice = ROUTE_PRICES.getOrDefault(routeKey, 0.0);
+	            
+	            if (roundTripRadioButton.isSelected()) {
+	                int returnDay = Integer.parseInt((String) returnDayComboBox.getSelectedItem());
+	                int returnMonth = returnMonthComboBox.getSelectedIndex() + 1; 
+	                int returnYear = Integer.parseInt((String) returnYearComboBox.getSelectedItem());
+
+	                Calendar returnCalendar = Calendar.getInstance();
+	                returnCalendar.set(returnYear, returnMonth - 1, returnDay); 
+	                returnDateHolder[0] = new Date(returnCalendar.getTimeInMillis());
+	            } else {
+	                returnDateHolder[0] = null; // Ensure it's null if not a round trip
+	            }
+
+	            showRegistrationPage(selectedFlight, computedPrice, fromAirportComboBox, toAirportComboBox, sqlDate, returnDateHolder[0]);
+	        }
+	    });
+
+	    panel.add(tripTypeLabel);
+	    panel.add(oneWayRadioButton);
+	    panel.add(new JLabel()); 
+	    panel.add(roundTripRadioButton);
+	 
+	    panel.add(fromAirportLabel);
+	    panel.add(fromAirportComboBox);
+	 
+	    panel.add(toAirportLabel);
+	    panel.add(toAirportComboBox);
+
+		 JLabel priceLabel = new JLabel("Price: $0");
+		 panel.add(new JLabel());
+		 panel.add(priceLabel);
+	 
+	    panel.add(airlineLabel);
+	    panel.add(airlineComboBox);
+	 
+	    panel.add(departureDateLabel);
+	    JPanel datePanel = new JPanel(new FlowLayout());
+	    datePanel.add(dayComboBox);
+	    datePanel.add(monthComboBox);
+	    datePanel.add(yearComboBox);
+	    panel.add(datePanel);
+	 
+	    panel.add(returnDateLabel);
+	    panel.add(returnDatePanel);
+	      
+	    panel.add(numberOfSeatsLabel);
+	    panel.add(numberOfSeatsSpinner);
+	 
+	    panel.add(new JLabel());
+	    
+	    panel.add(searchButton);
+	 
+	    flightSearchDialog.add(panel);
+	    flightSearchDialog.pack();
+	    flightSearchDialog.setLocationRelativeTo(null);
+	    flightSearchDialog.setVisible(true);
+	    
+	    fromAirportComboBox.addActionListener(new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            updatePrice(fromAirportComboBox, toAirportComboBox, priceLabel);
+	        }
+	    });
+	    
+	    toAirportComboBox.addActionListener(new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            updatePrice(fromAirportComboBox, toAirportComboBox, priceLabel);
+	        }
+	    });
+	    
+	}
+
+	   // Method to update the price label based on selected airports
+	   private void updatePrice(JComboBox<String> fromAirport, JComboBox<String> toAirport, JLabel priceLabel) {
+	       String routeKey = fromAirport.getSelectedItem() + "-" + toAirport.getSelectedItem();
+	       Double price = ROUTE_PRICES.getOrDefault(routeKey, 0.0);
+	       priceLabel.setText("Price: $" + price);
+	   }
+	   
+	   private void showRegistrationPage(Flight selectedFlight, double price, JComboBox<String> fromAirport, JComboBox<String> toAirport, java.sql.Date selectedFlightDate, Date returnDate) {
+	      JDialog registrationDialog = new JDialog();
+	   
+	       registrationDialog.setTitle("Enter Registration Details");
+	       
+	       JPanel panel = new JPanel(new GridLayout(0, 2)); 
+	       panel.setSize(700, 400);
+	         
+	       JLabel priceDisplayLabel = new JLabel("Flight Price: $" + price);
+	       panel.add(new JLabel("Flight Price:"));
+	       panel.add(priceDisplayLabel);
+	   
+	       JTextField firstNameField = new JTextField();
+	       JTextField lastNameField = new JTextField();
+	       JTextField phoneNumberField = new JTextField();
+	       JTextField emailField = new JTextField();
+	       JComboBox<String> seatComboBox = new JComboBox<>(new String[]{"Window", "Middle", "Aisle" });
+	       JTextField cardNumberField = new JTextField();
+	       JTextField expiryDateField = new JTextField();
+	       JTextField cvvField = new JTextField();
+	   
+	       JButton submitButton = new JButton("Submit");
+	   
+	       panel.add(new JLabel("First Name:"));
+	       panel.add(firstNameField);
+	   
+	       panel.add(new JLabel("Last Name:"));
+	       panel.add(lastNameField);
+	   
+	       panel.add(new JLabel("Phone Number:"));
+	       panel.add(phoneNumberField);
+	   
+	       panel.add(new JLabel("Email:"));
+	       panel.add(emailField);
+	   
+	       panel.add(new JLabel("Seat Type:"));
+	       panel.add(seatComboBox);
+	   
+	       panel.add(new JLabel("Card Number:"));
+	       panel.add(cardNumberField);
+	   
+	       panel.add(new JLabel("Expiry Date:"));
+	       panel.add(expiryDateField);
+	   
+	       panel.add(new JLabel("CVV:"));
+	       panel.add(cvvField);
+	   
+	       panel.add(new JLabel());  // Empty space for alignment
+	       panel.add(submitButton);
+	   
+	       registrationDialog.add(panel);
+	       registrationDialog.pack();
+	       registrationDialog.setLocationRelativeTo(null);
+	       registrationDialog.setVisible(true);
+	       
+	       submitButton.addActionListener(e -> {
+	           // Retrieve input values
+	          String firstName = firstNameField.getText();
+	             String lastName = lastNameField.getText();
+	             String phoneNumber = phoneNumberField.getText();
+	             String email = emailField.getText();
+	             String seatType = (String) seatComboBox.getSelectedItem();
+	             String cardNumber = cardNumberField.getText();
+	             String expiryDate = expiryDateField.getText();
+	             String cvv = cvvField.getText();
+	             
+	             String origin = (String) fromAirport.getSelectedItem();
+	             String destination = (String) toAirport.getSelectedItem();
+	             String routeKey = origin + " at " + destination;
+	             java.sql.Time departureTime = getDepartureTimeFromRoute(routeKey);
+	   
+	             LocalDate currentDate = LocalDate.now();
+	             LocalTime departureLocalTime = departureTime.toLocalTime();
+	             LocalDateTime departureDateTime = LocalDateTime.of(currentDate, departureLocalTime);
+	             java.sql.Timestamp departureTimestamp = java.sql.Timestamp.valueOf(departureDateTime);
+	             int totalSeats = 100;
+	   
+	       
+	         if (firstName.isEmpty() || lastName.isEmpty() || phoneNumber.isEmpty() || email.isEmpty() || seatType == null) {
+	            JOptionPane.showMessageDialog(null, "Please fill out all the information before pressing submit.");
+	            return;
+	         }
+	         if (!cardNumber.matches("\\d+") || cardNumber.length() != 16) {
+	            JOptionPane.showMessageDialog(null, "Please enter a valid card number with 16 digits.");
+	            return;
+	         }
+	         if (!expiryDate.matches("\\d+") || expiryDate.length() != 4) {
+	            JOptionPane.showMessageDialog(null, "Please enter a valid expiry date with 4 digits (MMYY).");
+	            return;
+	         }
+	         if (!cvv.matches("\\d+") || cvv.length() != 3) {
+	            JOptionPane.showMessageDialog(null, "Please enter a valid CVV with 3 digits.");
+	            return;
+	         }
+	           String reservationNumber = generateReservationNumber();
+	                 // showRegistrationPage(selectedFlight, computedPrice);
+	             
+	             try {
+	            	 saveToDatabase(firstName, lastName, email, phoneNumber, reservationNumber, price, origin, destination, departureTimestamp, totalSeats, selectedFlightDate, returnDate);
+	               JOptionPane.showMessageDialog(null, "Your reservation number is: " + reservationNumber);
+	               registrationDialog.dispose();
+	           } catch (SQLException ex) {
+	               JOptionPane.showMessageDialog(null, "Unable to save Reservation");
+	               ex.printStackTrace(); 
+	           }
+	       });
+	       
+	   }
+	   private java.sql.Time getDepartureTimeFromRoute(String route) {
+	       // Getting the time, "8:00AM" from "JFK at 8:00AM-LAX at 3:30PM"
+	       String timeSubstring = route.split("-")[0].split(" at ")[1];
+	   
+	       // Convert the time substring into a LocalTime object
+	       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("h:mma");
+	       LocalTime localTime = LocalTime.parse(timeSubstring, formatter);
+	   
+	       // Convert LocalTime to java.sql.Time
+	       return java.sql.Time.valueOf(localTime);
+	   }
+	   
+	   private void saveToDatabase(String firstName, String lastName, String email, String phoneNumber, String reservationNumber, double price, String origin, String destination, java.sql.Timestamp departureTime, int totalSeats, Date flightDate, Date returnDate) throws SQLException {
+		    String table = "passengers";
+		    if ("passenger".equals(reservationNumber)) {
+		        table = "passengers";
+		    }
+
+		    String sql = "INSERT INTO " + table + " (first_name, last_name, email, phone_number, reservation_number, price, payment_date, origin, destination, departure_time, total_seats, flight_date, return_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+		    try (Connection connection = getDatabaseConnection();
+		        PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+		        preparedStatement.setString(1, firstName);
+		        preparedStatement.setString(2, lastName);
+		        preparedStatement.setString(3, email);
+		        preparedStatement.setString(4, phoneNumber); 
+		        preparedStatement.setString(5, reservationNumber); 
+		        preparedStatement.setDouble(6, price); 
+
+		        // Set the current date for the payment_date column
+		        java.sql.Date currentDate = java.sql.Date.valueOf(LocalDate.now());
+		        preparedStatement.setDate(7, currentDate);
+		        preparedStatement.setString(8, origin);
+		        preparedStatement.setString(9, destination);
+		        preparedStatement.setTimestamp(10, departureTime);
+		        preparedStatement.setInt(11, totalSeats);
+		        preparedStatement.setDate(12, flightDate);
+		        preparedStatement.setDate(13, returnDate); // Set the return date
+
+		        preparedStatement.executeUpdate();
+		    }
+		}
+	   
+	   private String generateReservationNumber() {
+	   String candidateChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+	   StringBuilder reservationNumber = new StringBuilder();
+	   Random rnd = new Random();
+	   while (reservationNumber.length() < 9) {
+	      int index = (int) (rnd.nextFloat() * candidateChars.length());
+	      reservationNumber.append(candidateChars.charAt(index));
+	   }
+	   return reservationNumber.toString();
+	}
+	
+	   private Connection getDatabaseConnection() {
+	       // Replace with your own MySQL connection details!!!! 
+	      String url = "jdbc:mysql://127.0.0.1:3306/jnadb";
+	      String user = "root";
+	      String pass = "123456789";
+	       
+	      try {
+	         return DriverManager.getConnection(url, user, pass);
+	      } catch (SQLException e) {
+	         e.printStackTrace();
+	         return null;
+	      }
+	   }
+}
+
+
+  class Reservation {
+	    private int reservationNumber;
+	    private Flight flightDetails;
+	    private Passenger passengerDetails;
+	    private String reservationDate;
+
+	    public Reservation(int reservationNumber, Flight flightDetails, Passenger passengerDetails, String reservationDate) {
+	        this.reservationNumber = reservationNumber;
+	        this.flightDetails = flightDetails;
+	        this.passengerDetails = passengerDetails;
+	        this.reservationDate = reservationDate;
+	    }
+
+	    public int getReservationNumber() {
+	        return reservationNumber;
+	    }
+
+	    public void setReservationNumber(int reservationNumber) {
+	        this.reservationNumber = reservationNumber;
+	    }
+
+	    public Flight getFlightDetails() {
+	        return flightDetails;
+	    }
+
+	    public void setFlightDetails(Flight flightDetails) {
+	        this.flightDetails = flightDetails;
+	    }
+
+	    public Passenger getPassengerDetails() {
+	        return passengerDetails;
+	    }
+
+	    public void setPassengerDetails(Passenger passengerDetails) {
+	        this.passengerDetails = passengerDetails;
+	    }
+
+	    public String getReservationDate() {
+	        return reservationDate;
+	    }
+
+	    public void setReservationDate(String reservationDate) {
+	        this.reservationDate = reservationDate;
+	    }
+	}
+  
+  class Account {
+	   public static void createAccount(){
+
+		      JFrame cAframe = new JFrame("JNA Airlines Services");
+		      cAframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		      cAframe.setSize(500, 400);
+		      JPanel panel = new JPanel(new GridBagLayout());
+		      GridBagConstraints gbc = new GridBagConstraints();
+		      gbc.fill = GridBagConstraints.HORIZONTAL;
+		      gbc.insets = new Insets(10, 10, 10, 10);
+		   
+		    // Header label
+		      JLabel headerLabel = new JLabel("Account Sign Up Form:", SwingConstants.CENTER);
+		      Font currentFont = headerLabel.getFont();
+		      Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.5F);
+		      headerLabel.setFont(newFont);
+		      gbc.gridwidth = 2; // Span across two columns
+		      gbc.gridx = 0;
+		      gbc.gridy = 0;
+		      panel.add(headerLabel, gbc);
+		   
+		      JLabel firstNameLabel = new JLabel("First Name:");
+		      gbc.gridwidth = 1; // Reset to default for other components
+		      gbc.gridx = 0;
+		      gbc.gridy = 1;
+		      panel.add(firstNameLabel, gbc);
+		      JTextField firstNameField = new JTextField(20);
+		      gbc.gridx = 1;
+		      panel.add(firstNameField, gbc);
+		   
+		      JLabel lastNameLabel = new JLabel("Last Name:");
+		      gbc.gridx = 0;
+		      gbc.gridy = 2;
+		      panel.add(lastNameLabel, gbc);
+		      JTextField lastNameField = new JTextField(20);
+		      gbc.gridx = 1;
+		      panel.add(lastNameField, gbc);
+		   
+		      JLabel emailLabel = new JLabel("Email:");
+		      gbc.gridx = 0;
+		      gbc.gridy = 3;
+		      panel.add(emailLabel, gbc);
+		      JTextField emailField = new JTextField(20);
+		      gbc.gridx = 1;
+		      panel.add(emailField, gbc);
+		   
+		      JLabel passwordLabel = new JLabel("Password:");
+		      gbc.gridx = 0;
+		      gbc.gridy = 4;
+		      panel.add(passwordLabel, gbc);
+		      JPasswordField passwordField = new JPasswordField(20);
+		      gbc.gridx = 1;
+		      panel.add(passwordField, gbc);
+		   
+		      JLabel accountTypeLabel = new JLabel("Account Type:");
+		      gbc.gridx = 0;
+		      gbc.gridy = 5;
+		      panel.add(accountTypeLabel, gbc);
+		      JComboBox<String> accountTypeComboBox = new JComboBox<>(new String[]{"Customer", "Administrator"});
+		      gbc.gridx = 1;
+		      panel.add(accountTypeComboBox, gbc);
+		   
+		      JButton submitButton = new JButton("Create Account");
+		      submitButton.addActionListener(
+		         e -> {
+		         // Capture user input
+		            String firstName = firstNameField.getText().trim();
+		            String lastName = lastNameField.getText().trim();
+		            String email = emailField.getText().trim();
+		            String password = new String(passwordField.getPassword()).trim();
+		            String accountType = (String) accountTypeComboBox.getSelectedItem();
+		         
+		            // Validate fields
+		            if (!validateFields(firstName, lastName, email, password, cAframe)) {
+		               return;
+		            }
+		           
+		            if ("Administrator".equals(accountType)) {
+		            // Prompt for admin code
+		               String adminCode = JOptionPane.showInputDialog(cAframe, "Enter Admin Code:", "Admin Verification", JOptionPane.PLAIN_MESSAGE);
+		           
+		               
+		               if (!Admin.verifyAdminCode(adminCode)) {
+		                  JOptionPane.showMessageDialog(cAframe, "Invalid Admin Code!", "Error", JOptionPane.ERROR_MESSAGE);
+		                  return;
+		               }
+		            }
+		         
+		         // Stores account info into MySQL table if successful
+		            try {
+		               saveAccountToDatabase(firstName, lastName, email, password, accountType);
+		               JOptionPane.showMessageDialog(cAframe, "Account created successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+		               
+		               // Close the current 'Create Account' frame
+		               cAframe.dispose();
+		               
+		                // Redirect user to customerDashboard
+		               if ("Customer".equals(accountType)) {
+		            	    AirlineMainMenu mainMenu = new AirlineMainMenu();
+		            	    mainMenu.showLoginPage();
+		            	} else if ("Administrator".equals(accountType)) {
+		            	    AirlineMainMenu mainMenu = new AirlineMainMenu();
+		            	    mainMenu.showAdminMenu();
+		               }
+		            } catch (Exception ex) {
+		               JOptionPane.showMessageDialog(cAframe, "Error saving account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+		            }
+		         });
+		   
+		      JButton cancelButton = new JButton("Cancel");
+		      cancelButton.addActionListener(
+		         e -> {
+		            cAframe.dispose();
+            	    AirlineMainMenu mainMenu = new AirlineMainMenu();
+            	    mainMenu.displayMainMenu();
+		         }
+		         );
+		      gbc.gridwidth = 2;
+		      gbc.gridx = 0;
+		      gbc.gridy = 7;
+		      panel.add(cancelButton, gbc);
+		         
+		      gbc.gridwidth = 2; // For the button to span two columns
+		      gbc.gridx = 0;
+		      gbc.gridy = 6;
+		      panel.add(submitButton, gbc);
+		   
+		      cAframe.add(panel);
+		      cAframe.setLocationRelativeTo(null);
+		      cAframe.setVisible(true);
+		   }
+	   
+		private static boolean validateFields(String firstName, String lastName, String email, String password, JFrame cAframe) {
+		      if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() || password.isEmpty()) {
+		         JOptionPane.showMessageDialog(cAframe, "All fields must be filled in.", "Input Error", JOptionPane.ERROR_MESSAGE);
+		         return false; 
+		      }
+			return true;
+		}
+	   
+	   private static void saveAccountToDatabase(String firstName, String lastName, String email, String password, String accountType) throws SQLException {
+	      String table = "customerAccounts";
+	      if ("Administrator".equals(accountType)) {
+	         table = "adminAccounts";
+	      }
+	   
+	      String sql = "INSERT INTO " + table + " (first_name, last_name, email, password) VALUES (?, ?, ?, ?)";
+	   
+	      try (Connection connection = getDatabaseConnection();
+	         PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+	      
+	         preparedStatement.setString(1, firstName);
+	         preparedStatement.setString(2, lastName);
+	         preparedStatement.setString(3, email);
+	         preparedStatement.setString(4, password);  
+	         preparedStatement.executeUpdate();
+	      }
+	   }	   
+	
+	   private static Connection getDatabaseConnection() {
+	       // Replace with your own MySQL connection details!!!! 
+	      String url = "jdbc:mysql://127.0.0.1:3306/jnadb";
+	      String user = "root";
+	      String pass = "123456789";
+	       
+	      try {
+	         return DriverManager.getConnection(url, user, pass);
+	      } catch (SQLException e) {
+	         e.printStackTrace();
+	         return null;
+	      }
+	   }
+  }
+  
 public class AirlineMainMenu {
-@SuppressWarnings("serial")
-private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, Double>() {{
-    put("JFK at 8:00AM-LAX at 3:30PM", 240.0);
-    put("JFK at 8:00AM-ATL at 11:30AM", 160.0);
-    put("JFK at 8:00AM-DFW at 5:00PM", 180.0);
-    put("JFK at 8:00AM-ATL at 10:00PM", 150.0);
-    put("JFK at 8:00AM-DFW at 10:00AM", 180.0);
-    put("JFK at 8:00AM-LAX at 6:00AM", 220.0);
-    
-    put("MIA at 9:00AM-ATL at 10:00PM", 130.0);
-    put("MIA at 9:00AM-LAX at 3:30PM", 210.0);
-    put("MIA at 9:00AM-ATL at 11:30AM", 140.0);
-    put("MIA at 9:00AM-DFW at 10:00AM", 120.0);
-    put("MIA at 9:00AM-DFW at 10:00AM", 140.0);
-    put("MIA at 9:00AM-LAX at 6:00AM", 200.0);
-
-    put("SEA at 10:00AM-LAX at 3:30PM", 230.0);
-    put("SEA at 10:00AM-ATL at 11:30AM", 220.0);
-    put("SEA at 10:00AM-DFW at 5:00PM", 170.0);
-    put("SEA at 10:00AM-ATL at 10:00PM", 210.0);
-    put("SEA at 10:00AM-DFW at 10:00AM", 160.0);
-    put("SEA at 10:00AM-LAX at 6:00AM", 190.0);
-
-    put("ORD at 9:30AM-DFW at 10:00AM", 190.0);
-    put("ORD at 9:30AM-LAX at 6:00AM", 250.0);
-    put("ORD at 9:30AM-LAX at 3:30PM", 240.0);
-    put("ORD at 9:30AM-DFW at 5:00PM", 180.0);
-    put("ORD at 9:30AM-ATL at 11:30AM", 155.0);
-    put("ORD at 12:00PM-LAX at 2:30PM", 225.0);
-    put("ORD at 4:00PM-DFW at 6:00PM", 175.0);
-
-    put("BOS at 8:30AM-DFW at 10:00AM", 200.0);
-    put("BOS at 8:30AM-LAX at 6:00AM", 260.0);
-    put("BOS at 8:30AM-LAX at 3:30PM", 250.0);
-    put("BOS at 8:30AM-DFW at 5:00PM", 190.0);
-    put("BOS at 8:30AM-ATL at 10:30AM", 165.0);
-    put("BOS at 1:00PM-LAX at 3:30PM", 215.0);
-
-    put("SFO at 10:30AM-DFW at 10:00AM", 210.0);
-    put("SFO at 10:30AM-LAX at 6:00AM", 220.0);
-    put("SFO at 10:30AM-LAX at 3:30PM", 230.0);
-    put("SFO at 10:30AM-ATL at 12:30PM", 205.0);
-    put("SFO at 3:00PM-DFW at 5:00PM", 185.0);
-}};
 
    private static final String DB_URL = "jdbc:mysql://127.0.0.1:3306/jnadb";
    private static final String DB_USER = "root";
@@ -77,13 +704,16 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
          });
    }
    private JFrame frame;
+   private Admin adminInstance = new Admin(); 
 
-   private void displayMainMenu() {
+   public void displayMainMenu() {
    
       // Frame setup
       JFrame frame = new JFrame("JNA Airlines Services");
       frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
       frame.setSize(400, 300);
+      frame.setMinimumSize(new Dimension(400, 300));// min window size
+
       
       // Main panel with BorderLayout
       JPanel mainPanel = new JPanel(new BorderLayout());
@@ -91,7 +721,7 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
       // Welcome label in the center
       JLabel welcomeLabel = new JLabel("Welcome to JNA Airline Services", SwingConstants.CENTER);
       Font currentFont = welcomeLabel.getFont();
-      Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.5F);
+      Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.75F);
       welcomeLabel.setFont(newFont);
       mainPanel.add(welcomeLabel, BorderLayout.CENTER);
       
@@ -104,12 +734,13 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
       buttonPanel.add(loginButton);
       
       JButton createAccountButton = new JButton("Create Account");
-      createAccountButton.addActionListener(e -> createAccount());
+      createAccountButton.addActionListener(e -> Account.createAccount());
       buttonPanel.add(createAccountButton);
       
       JButton adminLoginButton = new JButton("Admin Login");
       adminLoginButton.addActionListener(e -> showAdminLoginPage());
       buttonPanel.add(adminLoginButton);
+      buttonPanel.add(Box.createVerticalStrut(3));
       
       JButton contactUsButton = new JButton("Contact Us");
       contactUsButton.addActionListener(e -> contactUs());
@@ -120,185 +751,83 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
       createAccountButton.setAlignmentX(Component.CENTER_ALIGNMENT);
       adminLoginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
       contactUsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-   
       mainPanel.add(buttonPanel, BorderLayout.SOUTH);
    
       frame.add(mainPanel);
-   
-      frame.setLocationRelativeTo(null);  // Center the frame
+      frame.setResizable(true);
+      frame.setLocationRelativeTo(null);  // Centers the frame
       frame.setVisible(true);
    }
-   
-   public void createAccount(){
-    JFrame cAframe = new JFrame("JNA Airlines Services");
-    cAframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    cAframe.setSize(500, 400);
-    JPanel panel = new JPanel(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.insets = new Insets(10, 10, 10, 10);
 
-    // Header label
-    JLabel headerLabel = new JLabel("Account Sign Up Form:", SwingConstants.CENTER);
-    Font currentFont = headerLabel.getFont();
-    Font newFont = currentFont.deriveFont(currentFont.getSize() * 1.5F);
-    headerLabel.setFont(newFont);
-    gbc.gridwidth = 2; // Span across two columns https://javapointers.com/java/java-se/the-layout-manager-gridbag-layout/
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    panel.add(headerLabel, gbc);
-
-    JLabel firstNameLabel = new JLabel("First Name:");
-    gbc.gridwidth = 1; // Reset to default for other components
-    gbc.gridx = 0;
-    gbc.gridy = 1;
-    panel.add(firstNameLabel, gbc);
-    JTextField firstNameField = new JTextField(20);
-    gbc.gridx = 1;
-    panel.add(firstNameField, gbc);
-
-    JLabel lastNameLabel = new JLabel("Last Name:");
-    gbc.gridx = 0;
-    gbc.gridy = 2;
-    panel.add(lastNameLabel, gbc);
-    JTextField lastNameField = new JTextField(20);
-    gbc.gridx = 1;
-    panel.add(lastNameField, gbc);
-
-    JLabel emailLabel = new JLabel("Email:");
-    gbc.gridx = 0;
-    gbc.gridy = 3;
-    panel.add(emailLabel, gbc);
-    JTextField emailField = new JTextField(20);
-    gbc.gridx = 1;
-    panel.add(emailField, gbc);
-
-    JLabel passwordLabel = new JLabel("Password:");
-    gbc.gridx = 0;
-    gbc.gridy = 4;
-    panel.add(passwordLabel, gbc);
-    JPasswordField passwordField = new JPasswordField(20);
-    gbc.gridx = 1;
-    panel.add(passwordField, gbc);
-
-    JLabel accountTypeLabel = new JLabel("Account Type:");
-    gbc.gridx = 0;
-    gbc.gridy = 5;
-    panel.add(accountTypeLabel, gbc);
-    JComboBox<String> accountTypeComboBox = new JComboBox<>(new String[]{"Customer", "Administrator"});
-    gbc.gridx = 1;
-    panel.add(accountTypeComboBox, gbc);
-
-    JButton submitButton = new JButton("Create Account");
-    submitButton.addActionListener(e -> {
-        // Capture user input
-        String firstName = firstNameField.getText().trim();
-        String lastName = lastNameField.getText().trim();
-        String email = emailField.getText().trim();
-        String password = new String(passwordField.getPassword()).trim();
-        String accountType = (String) accountTypeComboBox.getSelectedItem();
-
-        if ("Administrator".equals(accountType)) {
-            // Prompt for admin code
-            String adminCode = JOptionPane.showInputDialog(cAframe, "Enter Admin Code:", "Admin Verification", JOptionPane.PLAIN_MESSAGE);
-
-            if (!verifyAdminCode(adminCode)) {
-                JOptionPane.showMessageDialog(cAframe, "Invalid Admin Code!", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-        }
-        // Stores account info into MySQL table if successful
-        try {
-            saveAccountToDatabase(firstName, lastName, email, password, accountType);
-            JOptionPane.showMessageDialog(cAframe, "Account created successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(cAframe, "Error saving account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    });
-    gbc.gridwidth = 2; // For the button to span two columns
-    gbc.gridx = 0;
-    gbc.gridy = 6;
-    panel.add(submitButton, gbc);
-
-    cAframe.add(panel);
-    cAframe.setLocationRelativeTo(null);
-    cAframe.setVisible(true);
-}
-
-   private void saveAccountToDatabase(String firstName, String lastName, String email, String password, String accountType) throws SQLException {
-      String table = "customerAccounts";
-      if ("Administrator".equals(accountType)) {
-         table = "adminAccounts";
-      }
-   
-      String sql = "INSERT INTO " + table + " (first_name, last_name, email, password) VALUES (?, ?, ?, ?)";
-   
-      try (Connection connection = getDatabaseConnection();
-         PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-      
-         preparedStatement.setString(1, firstName);
-         preparedStatement.setString(2, lastName);
-         preparedStatement.setString(3, email);
-         preparedStatement.setString(4, password);  // Note: Store passwords securely. This is just a basic example.
-         preparedStatement.executeUpdate();
-      }
-   }
-
-    
-   private void showLoginPage() {
-      JDialog loginDialog = new JDialog();
-      loginDialog.setTitle("Login");
-    
-    // Set a preferred size for the dialog
-      loginDialog.setPreferredSize(new Dimension(400, 150));
-    
-    // Use GridBagLayout for better control over layout
-      loginDialog.setLayout(new GridBagLayout());
-      GridBagConstraints constraints = new GridBagConstraints();
-      constraints.fill = GridBagConstraints.HORIZONTAL;
-      constraints.insets = new Insets(5, 5, 5, 5); // padding
-   
-      JTextField emailField = new JTextField(20); // Set column size for better width
-      JPasswordField passwordField = new JPasswordField(20);
-      JButton submitButton = new JButton("Submit");
-   
-      constraints.gridx = 0;
-      constraints.gridy = 0;
-      loginDialog.add(new JLabel("Email:"), constraints);
-   
-      constraints.gridx = 1;
-      loginDialog.add(emailField, constraints);
-   
-      constraints.gridx = 0;
-      constraints.gridy = 1;
-      loginDialog.add(new JLabel("Password:"), constraints);
-   
-      constraints.gridx = 1;
-      loginDialog.add(passwordField, constraints);
-   
-      constraints.gridx = 1;
-      constraints.gridy = 2;
-      constraints.anchor = GridBagConstraints.EAST;
-      loginDialog.add(submitButton, constraints);
-   
-      submitButton.addActionListener(
-         e -> {
-            String email = emailField.getText();
-            String password = new String(passwordField.getPassword());
-            if (verifyLogin(email, password)) {
-               JOptionPane.showMessageDialog(loginDialog, "Login Successful!");
-               loginDialog.dispose();
-               userLoginPage();
-            } else {
-               JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-         });
-   
-      loginDialog.pack();
-      loginDialog.setLocationRelativeTo(null);
-      loginDialog.setVisible(true);
-   }
-      
+   public void showLoginPage() {
+	      JDialog loginDialog = new JDialog();
+	      loginDialog.setTitle("Login");
+	   
+	    // Set a preferred size for the dialog
+	      loginDialog.setPreferredSize(new Dimension(400, 150));
+	   
+	    // Use GridBagLayout for better control over layout
+	      loginDialog.setLayout(new GridBagLayout());
+	      GridBagConstraints constraints = new GridBagConstraints();
+	      constraints.fill = GridBagConstraints.HORIZONTAL;
+	      constraints.insets = new Insets(5, 5, 5, 5); // padding
+	   
+	      JTextField emailField = new JTextField(20);
+	      JPasswordField passwordField = new JPasswordField(20);
+	      JButton submitButton = new JButton("Submit");
+	      JButton cancelButton = new JButton("Cancel"); 
+	   
+	      constraints.gridx = 0;
+	      constraints.gridy = 0;
+	      loginDialog.add(new JLabel("Email:"), constraints);
+	   
+	      constraints.gridx = 1;
+	      loginDialog.add(emailField, constraints);
+	   
+	      constraints.gridx = 0;
+	      constraints.gridy = 1;
+	      loginDialog.add(new JLabel("Password:"), constraints);
+	      constraints.gridx = 1;
+	      loginDialog.add(passwordField, constraints);
+	      constraints.gridx = 0;
+	      constraints.gridy = 2;
+	      loginDialog.add(cancelButton, constraints); // Added cancel button
+	      constraints.gridx = 1;
+	      constraints.gridy = 2;
+	      constraints.anchor = GridBagConstraints.EAST;
+	      loginDialog.add(submitButton, constraints);
+	     
+	      submitButton.addActionListener(
+	         e -> {
+	            String email = emailField.getText();
+	            String password = new String(passwordField.getPassword());
+	            try{
+	               if (verifyLogin(email, password)) {
+	                  JOptionPane.showMessageDialog(loginDialog, "Login Successful!");
+	                  loginDialog.dispose();
+	                  userLoginPage();
+	               } else {
+	                  JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
+	               }
+	            }catch (Exception ex) {
+	               ex.printStackTrace(); 
+	               JOptionPane.showMessageDialog(loginDialog, "An error occurred. Please try again later.", "Error", JOptionPane.ERROR_MESSAGE);
+	            }
+	           
+	         });
+	         
+	      cancelButton.addActionListener(
+	         e -> {
+	            loginDialog.dispose();  // Close the login dialog
+	            displayMainMenu(); // Redirect to the main menu
+	         });
+	         
+	   
+	      loginDialog.pack();
+	      loginDialog.setLocationRelativeTo(null);
+	      loginDialog.setVisible(true);
+	   }
+        
    private boolean verifyLogin(String email, String password) {
         // Ideally, hash the password and then compare with the hashed password in DB.
    
@@ -324,60 +853,73 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
    
       return loginSuccessful;
    }
-   
-   private void showAdminLoginPage() {
-      JDialog loginDialog = new JDialog();
-      loginDialog.setTitle("Admin Login");
-      loginDialog.setPreferredSize(new Dimension(400, 150));
-   
-      JPanel panel = new JPanel(new GridBagLayout());
-      GridBagConstraints gbc = new GridBagConstraints();
-      gbc.fill = GridBagConstraints.HORIZONTAL;
-      gbc.insets = new Insets(5, 5, 5, 5);
-   
-      JLabel emailLabel = new JLabel("Email:");
-      JTextField emailField = new JTextField(20);
-      JLabel passwordLabel = new JLabel("Password:");
-      JPasswordField passwordField = new JPasswordField(20);
-      JButton submitButton = new JButton("Submit");
-   
-      gbc.gridx = 0; gbc.gridy = 0;
-      panel.add(emailLabel, gbc);
-   
-      gbc.gridx = 1;
-      panel.add(emailField, gbc);
-   
-      gbc.gridx = 0; gbc.gridy = 1;
-      panel.add(passwordLabel, gbc);
-   
-      gbc.gridx = 1;
-      panel.add(passwordField, gbc);
-   
-      gbc.gridx = 1; gbc.gridy = 2;
-      panel.add(submitButton, gbc);
-   
-      submitButton.addActionListener(e -> {
-          String email = emailField.getText();
-          String password = new String(passwordField.getPassword());
-          
-          if (verifyAdminLogin(email, password)) {
-              JOptionPane.showMessageDialog(loginDialog, "Admin Login Successful!");
-              loginDialog.dispose();
-          } else {
-              JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
-          }
-      });
-   
-      loginDialog.add(panel);
-      loginDialog.pack();
-      loginDialog.setLocationRelativeTo(null);
-      loginDialog.setVisible(true);
-   
-   }
-   
-   private void showAdminMenu() {
+
+	public void showAdminLoginPage() {
+	      JDialog loginDialog = new JDialog();
+	      loginDialog.setTitle("Admin Login");
+	      loginDialog.setPreferredSize(new Dimension(400, 150));
+	   
+	      JPanel panel = new JPanel(new GridBagLayout());
+	      GridBagConstraints gbc = new GridBagConstraints();
+	      gbc.fill = GridBagConstraints.HORIZONTAL;
+	      gbc.insets = new Insets(5, 5, 5, 5);
+	   
+	      JLabel emailLabel = new JLabel("Email:");
+	      JTextField emailField = new JTextField(20);
+	      JLabel passwordLabel = new JLabel("Password:");
+	      JPasswordField passwordField = new JPasswordField(20);
+	      JButton submitButton = new JButton("Submit");
+	   
+	      gbc.gridx = 0; gbc.gridy = 0;
+	      panel.add(emailLabel, gbc);
+	   
+	      gbc.gridx = 1;
+	      panel.add(emailField, gbc);
+	   
+	      gbc.gridx = 0; gbc.gridy = 1;
+	      panel.add(passwordLabel, gbc);
+	   
+	      gbc.gridx = 1;
+	      panel.add(passwordField, gbc);
+	   
+	      gbc.gridx = 1; gbc.gridy = 2;
+	      panel.add(submitButton, gbc);
+	   
+	      submitButton.addActionListener(
+	         e -> {
+	            String email = emailField.getText();
+	            String password = new String(passwordField.getPassword());
+	         
+	            if (adminInstance.verifyAdminLogin(email, password)) {
+	                JOptionPane.showMessageDialog(loginDialog, "Admin Login Successful!");
+	                loginDialog.dispose();
+	                showAdminMenu();  // Redirect to admin menu after successful login
+	            } else {
+	                JOptionPane.showMessageDialog(loginDialog, "Invalid Email or Password!", "Error", JOptionPane.ERROR_MESSAGE);
+	            }
+	        });
+	         
+	      JButton cancelButton = new JButton("Cancel");
+	   
+	      gbc.gridx = 0; gbc.gridy = 2;
+	      panel.add(cancelButton, gbc);
+	   
+	      cancelButton.addActionListener(
+	         e -> {
+	            loginDialog.dispose();
+	            displayMainMenu();  // Redirect to main menu when 'Cancel' is clicked
+	         }
+	         );
+	   
+	      loginDialog.add(panel);
+	      loginDialog.pack();
+	      loginDialog.setLocationRelativeTo(null);
+	      loginDialog.setVisible(true);
+	   }   
+	   
+	public void showAdminMenu() {
        JDialog menuDialog = new JDialog();
-       menuDialog.setTitle("Admin Menu");
+       menuDialog.setTitle("Admin Login");
        menuDialog.setPreferredSize(new Dimension(450, 200));
 
        JPanel panel = new JPanel(new GridBagLayout());
@@ -390,7 +932,7 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
        JComboBox<String> monthComboBox = new JComboBox<>(months);
 
        int currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
-       Integer[] years = {currentYear - 1, currentYear};
+       Integer[] years = {currentYear - 1, currentYear, currentYear + 1, currentYear + 2};
        JComboBox<Integer> yearComboBox = new JComboBox<>(years);
 
        gbc.gridx = 0;
@@ -420,10 +962,10 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
 
        JButton viewGrossSalesButton = new JButton("View Gross Sales");
        viewGrossSalesButton.addActionListener(e -> {
-           viewGrossSales(monthComboBox.getSelectedIndex() + 1, 
-                          (Integer) yearComboBox.getSelectedItem(),
-                          toMonthComboBox.getSelectedIndex() + 1,
-                          (Integer) toYearComboBox.getSelectedItem());
+           adminInstance.viewGrossSales(monthComboBox.getSelectedIndex() + 1, 
+                           (Integer) yearComboBox.getSelectedItem(),
+                           toMonthComboBox.getSelectedIndex() + 1,
+                           (Integer) toYearComboBox.getSelectedItem());
        });
 
        gbc.gridwidth = 4;  // Span all four columns
@@ -435,7 +977,7 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
 
        JButton showFlightLogButton = new JButton("Show Flight Log Report");
        showFlightLogButton.addActionListener(e -> {
-           showFlightLogReport();
+           adminInstance.showFlightLogReport();
        });
 
        gbc.gridy = 3; 
@@ -451,134 +993,6 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
        showFlightLogButton.setAlignmentX(Component.CENTER_ALIGNMENT);
    }
    
-   private void viewGrossSales(int fromMonth, int fromYear, int toMonth, int toYear) {
-       try (Connection connection = getDatabaseConnection()) {
-           String sql = "SELECT SUM(price) as total_sales FROM jnadb.passengers WHERE (MONTH(payment_date) BETWEEN ? AND ?) AND (YEAR(payment_date) BETWEEN ? AND ?)";
-           
-           PreparedStatement preparedStatement = connection.prepareStatement(sql);
-           preparedStatement.setInt(1, fromMonth);
-           preparedStatement.setInt(2, toMonth);
-           preparedStatement.setInt(3, fromYear);
-           preparedStatement.setInt(4, toYear);
-           
-           ResultSet resultSet = preparedStatement.executeQuery();
-           if (resultSet.next()) {
-               double totalSales = resultSet.getDouble("total_sales");
-               JOptionPane.showMessageDialog(null, "Total Gross Sales from " + fromMonth + "/" + fromYear + " to " + toMonth + "/" + toYear + ": $" + totalSales);
-           }
-       } catch (SQLException ex) {
-           ex.printStackTrace();
-           JOptionPane.showMessageDialog(null, "Error fetching gross sales: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-       }
-   }
-
-   private void showFlightLogReport() {
-       JDialog reportDialog = new JDialog();
-       reportDialog.setTitle("Flight Log Report");
-       reportDialog.setSize(700, 400);
-
-       // Update the table columns to match the passengers table
-       String[] columnNames = {"Passenger ID", "First Name", "Last Name", "Email", "Phone Number", "Reservation Number", "Price", "Payment Date", "Origin", "Destination", "Departure Time", "Total Seats"};
-       DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
-       JTable flightLogTable = new JTable(tableModel);
-
-       try (Connection connection = getDatabaseConnection()) {
-           // Update the SQL query to fetch data from the passengers table
-           String sql = "SELECT * FROM jnadb.passengers";
-           PreparedStatement preparedStatement = connection.prepareStatement(sql);
-           ResultSet resultSet = preparedStatement.executeQuery();
-
-           while (resultSet.next()) {
-               int passengerId = resultSet.getInt("passenger_id");
-               String firstName = resultSet.getString("first_name");
-               String lastName = resultSet.getString("last_name");
-               String email = resultSet.getString("email");
-               String phoneNumber = resultSet.getString("phone_number");
-               String reservationNumber = resultSet.getString("reservation_number");
-               double price = resultSet.getDouble("price");
-               Date paymentDate = resultSet.getDate("payment_date");
-               String origin = resultSet.getString("origin");
-               String destination = resultSet.getString("destination");
-               Time departureTime = resultSet.getTime("departure_time");
-               int totalSeats = resultSet.getInt("total_seats");
-
-               tableModel.addRow(new Object[]{passengerId, firstName, lastName, email, phoneNumber, reservationNumber, price, paymentDate, origin, destination, departureTime, totalSeats});
-           }
-       } catch (SQLException ex) {
-           ex.printStackTrace();
-           JOptionPane.showMessageDialog(reportDialog, "Error fetching flight log report: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-       }
-
-       JScrollPane scrollPane = new JScrollPane(flightLogTable);
-       reportDialog.add(scrollPane, BorderLayout.CENTER);
-
-       reportDialog.setLocationRelativeTo(null);
-       reportDialog.setVisible(true);
-   }
-
-   private boolean verifyAdminLogin(String email, String password) {
-      Connection connection = null;
-      PreparedStatement preparedStatement = null;
-      ResultSet resultSet = null;
-   
-      try {
-         connection = getDatabaseConnection();
-         String sql = "SELECT * FROM AdminAccounts WHERE email = ? AND password = ?";
-         preparedStatement = connection.prepareStatement(sql);
-         preparedStatement.setString(1, email);
-         preparedStatement.setString(2, password);
-           
-         resultSet = preparedStatement.executeQuery();
-      
-         if (resultSet.next()) {
-         showAdminMenu();
-            return true;
-         }
-      } catch (SQLException e) {
-         e.printStackTrace();
-      } finally {
-           // Close resources
-         try {
-            if (resultSet != null) resultSet.close();
-            if (preparedStatement != null) preparedStatement.close();
-            if (connection != null) connection.close();
-         } catch (SQLException e) {
-            e.printStackTrace();
-         }
-      }
-   
-      return false;
-   }
-
-   private boolean verifyAdminCode(String code) {
-      Connection connection = null;
-      PreparedStatement preparedStatement = null;
-      ResultSet resultSet = null;
-   
-      try {
-         connection = getDatabaseConnection();
-         String sql = "SELECT * FROM specialAdminCodes WHERE code = ?";
-         preparedStatement = connection.prepareStatement(sql);
-         preparedStatement.setString(1, code);
-      
-         resultSet = preparedStatement.executeQuery();
-      
-         return resultSet.next();  // If there's a result, the code is correct
-      } catch (SQLException e) {
-         e.printStackTrace();
-         return false;
-      } finally {
-        // Close resources
-         try {
-            if (resultSet != null) resultSet.close();
-            if (preparedStatement != null) preparedStatement.close();
-            if (connection != null) connection.close();
-         } catch (SQLException e) {
-            e.printStackTrace();
-         }
-      }
-   }
-   
    private Connection getDatabaseConnection() {
        // Replace with your own MySQL connection details!!!! 
       String url = "jdbc:mysql://127.0.0.1:3306/jnadb";
@@ -592,8 +1006,7 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
          return null;
       }
    }
-   
-   
+
    private void userLoginPage() {
       JFrame dashboardFrame = new JFrame("Main Menu");
        dashboardFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -609,8 +1022,9 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
        GridBagConstraints gbc = new GridBagConstraints();
 
        JButton viewFlightsButton = new JButton("View Flights Available");
+       Flight flightInstance = new Flight();
        viewFlightsButton.addActionListener(e -> {
-          showFlightSearchWindow();
+           flightInstance.showFlightSearchWindow();
        });
        gbc.gridx = 0;
        gbc.gridy = 0;
@@ -619,8 +1033,8 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
 
        JButton cancelFlightButton = new JButton("Cancel Flight");
        cancelFlightButton.addActionListener(e -> {
-          cancelFlight();
-
+    	   FlightManager flightManager = new FlightManager();
+    	   flightManager.cancelFlight();
        });
        gbc.gridy = 1;
        optionsPanel.add(cancelFlightButton, gbc);
@@ -643,424 +1057,53 @@ private static final HashMap<String, Double> ROUTE_PRICES = new HashMap<String, 
        dashboardFrame.setVisible(true);
        } 
    
-   private void cancelFlight() {
-       String reservationNumber = JOptionPane.showInputDialog("Enter your reservation number:");
-       
-       if (reservationNumber != null && !reservationNumber.trim().isEmpty()) {
-           try (Connection connection = getDatabaseConnection()) {
-               // Check if reservation exists
-               String sql = "SELECT * FROM `jnadb`.`passengers` WHERE `reservation_number` = ?";
-               PreparedStatement preparedStatement = connection.prepareStatement(sql);
-               preparedStatement.setString(1, reservationNumber);
-               ResultSet resultSet = preparedStatement.executeQuery();
-
-               if (resultSet.next()) {
-                   double price = resultSet.getDouble("price");
-                   String origin = resultSet.getString("origin");
-                   String destination = resultSet.getString("destination");
-
-                   String message = String.format("Reservation Details:\n\nPrice: $%.2f\nOrigin: %s\nDestination: %s\n\nAre you sure you want to cancel this reservation?", price, origin, destination);
-                   int confirm = JOptionPane.showConfirmDialog(null, message, "Confirm Cancel", JOptionPane.YES_NO_OPTION);
-                   
-                   if (confirm == JOptionPane.YES_OPTION) {
-                       // Delete reservation
-                       sql = "DELETE FROM `jnadb`.`passengers` WHERE `reservation_number` = ?";
-                       preparedStatement = connection.prepareStatement(sql);
-                       preparedStatement.setString(1, reservationNumber);
-                       preparedStatement.executeUpdate();
-
-                       JOptionPane.showMessageDialog(null, "Your reservation has been canceled. \n Please allow 3-5 business days for your refund to process.");
-                   }
-               } else {
-                   JOptionPane.showMessageDialog(null, "No reservation found with the given number.");
-               }
-
-           } catch (SQLException ex) {
-               ex.printStackTrace();
-               JOptionPane.showMessageDialog(null, "Error cancelling reservation: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-           }
-       } else {
-           JOptionPane.showMessageDialog(null, "Please provide a valid reservation number.");
-       }
-   }
-
    private void userInbox(String userEmail) {
-       JDialog inboxDialog = new JDialog();
-       inboxDialog.setTitle("Your Inbox");
-       inboxDialog.setSize(800, 400);
+	    JDialog inboxDialog = new JDialog();
+	    inboxDialog.setTitle("Your Inbox");
+	    inboxDialog.setSize(800, 400);
 
-       // Adjusted columns to match the Passenger table
-       String[] columnNames = {"First Name", "Last Name", "Email", "Phone Number", "Reservation Number", "Price", "Origin", "Destination"};
-       DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
-       JTable bookingsTable = new JTable(tableModel);
+	    // Adjusted columns and Passenger database
+	    String[] columnNames = {"First Name", "Last Name", "Email", "Phone Number", "Reservation Number", "Price", "From", "Destination", "Flight Date", "Return Date"}; 
+	    DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+	    JTable bookingsTable = new JTable(tableModel);
 
-       try (Connection connection = getDatabaseConnection()) {
-           // Modify SQL to select from Passenger table
-           String sql = "SELECT first_name, last_name, email, phone_number, reservation_number, price, origin, destination " +
-                        "FROM passengers " +
-                        "WHERE email = ?";
+	    try (Connection connection = getDatabaseConnection()) {
+	        // Modify SQL to select from Passenger table
+	        String sql = "SELECT first_name, last_name, email, phone_number, reservation_number, price, origin, destination, flight_date, return_date " +
+	                     "FROM passengers " +
+	                     "WHERE email = ?";
 
-           PreparedStatement preparedStatement = connection.prepareStatement(sql);
-           preparedStatement.setString(1, userEmail);
+	        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+	        preparedStatement.setString(1, userEmail);
 
-           ResultSet resultSet = preparedStatement.executeQuery();
-           while (resultSet.next()) {
-               String firstName = resultSet.getString("first_name");
-               String lastName = resultSet.getString("last_name");
-               String email = resultSet.getString("email");
-               String phoneNumber = resultSet.getString("phone_number");
-               String reservationNumber = resultSet.getString("reservation_number");
-               double price = resultSet.getDouble("price");
-               String origin = resultSet.getString("origin");
-               String destination = resultSet.getString("destination");
+	        ResultSet resultSet = preparedStatement.executeQuery();
+	        while (resultSet.next()) {
+	            String firstName = resultSet.getString("first_name");
+	            String lastName = resultSet.getString("last_name");
+	            String email = resultSet.getString("email");
+	            String phoneNumber = resultSet.getString("phone_number");
+	            String reservationNumber = resultSet.getString("reservation_number");
+	            double price = resultSet.getDouble("price");
+	            String origin = resultSet.getString("origin");
+	            String destination = resultSet.getString("destination");
+	            Date flightDate = resultSet.getDate("flight_date");
+	            Date returnDate = resultSet.getDate("return_date"); // Fetching return date
 
-               tableModel.addRow(new Object[]{firstName, lastName, email, phoneNumber, reservationNumber, price, origin, destination});
-           }
-       } catch (SQLException ex) {
-           ex.printStackTrace();
-           JOptionPane.showMessageDialog(inboxDialog, "Error fetching inbox: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-       }
+	            tableModel.addRow(new Object[]{firstName, lastName, email, phoneNumber, reservationNumber, price, origin, destination, flightDate, returnDate}); 
 
-       JScrollPane scrollPane = new JScrollPane(bookingsTable);
-       inboxDialog.add(scrollPane, BorderLayout.CENTER);
+	        }
+	    } catch (SQLException ex) {
+	        ex.printStackTrace();
+	        JOptionPane.showMessageDialog(inboxDialog, "Error fetching inbox: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+	    }
 
-       inboxDialog.setLocationRelativeTo(null);
-       inboxDialog.setVisible(true);
-   }
+	    JScrollPane scrollPane = new JScrollPane(bookingsTable);
+	    inboxDialog.add(scrollPane, BorderLayout.CENTER);
 
-
-   //Layout has changed since phase 1. This is MUCH clear and user-friendly
-private void showFlightSearchWindow() {
-    JDialog flightSearchDialog = new JDialog();
-    flightSearchDialog.setTitle("Search Flights");
-    
-    JPanel panel = new JPanel(new GridLayout(10, 2));
-    
-    // Option for one-way or round trip
-    JLabel tripTypeLabel = new JLabel("Type of Trip:");
-    JRadioButton oneWayRadioButton = new JRadioButton("One Way");
-    JRadioButton roundTripRadioButton = new JRadioButton("Round Trip");
-    ButtonGroup tripTypeGroup = new ButtonGroup();
-    tripTypeGroup.add(oneWayRadioButton);
-    tripTypeGroup.add(roundTripRadioButton);
-    oneWayRadioButton.setSelected(true); 
-
-    
-    JLabel fromAirportLabel = new JLabel("From Airport:");
-    JComboBox<String> fromAirportComboBox = new JComboBox<>(new String[]{"JFK at 8:00AM", "MIA at 9:00AM", "SEA at 10:00AM", "ORD at 9:30AM", "BOS at 8:30AM", "SFO at 10:30AM"}); 
-    
-    JLabel toAirportLabel = new JLabel("To Airport:");
-    JComboBox<String> toAirportComboBox = new JComboBox<>(new String[]{"ATL at 10:00PM", "DFW at 10:00AM", "LAX at 6:00AM", "LAX at 3:30PM", "ATL at 11:30AM", "DFW at 5:00PM"}); 
-    
-    JLabel airlineLabel = new JLabel("Airline:");
-    JComboBox<String> airlineComboBox = new JComboBox<>(new String[]{"American Airlines", "Delta Air Lines", "United Airlines"});
-    
-    JLabel departureDateLabel = new JLabel("Departure Date:");
-    
-    String[] days = new String[31];
-    for (int i = 1; i <= 31; i++) {
-        days[i-1] = Integer.toString(i);
-    }
-    JComboBox<String> dayComboBox = new JComboBox<>(days);
-    
-    String[] months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
-    JComboBox<String> monthComboBox = new JComboBox<>(months);
-    
-    int currentYear = Calendar.getInstance().get(Calendar.YEAR);
-    String[] years = new String[5];
-    for (int i = 0; i < 5; i++) {
-        years[i] = Integer.toString(currentYear + i);
-    }
-    JComboBox<String> yearComboBox = new JComboBox<>(years);
-    
-    JLabel returnDateLabel = new JLabel("Return Date:");
-    JComboBox<String> returnDayComboBox = new JComboBox<>(days);
-    JComboBox<String> returnMonthComboBox = new JComboBox<>(months);
-    JComboBox<String> returnYearComboBox = new JComboBox<>(years);
-    
-    JPanel returnDatePanel = new JPanel(new FlowLayout());
-    returnDatePanel.add(returnDayComboBox);
-    returnDatePanel.add(returnMonthComboBox);
-    returnDatePanel.add(returnYearComboBox);
-    
-    returnDateLabel.setVisible(false);
-    returnDatePanel.setVisible(false);
-    
-    roundTripRadioButton.addActionListener(
-    new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            returnDateLabel.setVisible(true);
-            returnDatePanel.setVisible(true);
-            flightSearchDialog.pack();
-        }
-        
-//        @Override
-//        public void actionPerformed(ActionEvent e) {
-//            
-//        }
-    });
-    
-    oneWayRadioButton.addActionListener(
-    new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            returnDateLabel.setVisible(false);
-            returnDatePanel.setVisible(false);
-            flightSearchDialog.pack();
-        }
-    });
-    JLabel numberOfSeatsLabel = new JLabel("Number of Seats:");
-    SpinnerNumberModel seatModel = new SpinnerNumberModel(1, 1, 9, 1); // Default is 1, minimum is 1, maximum is 9, step is 1
-    JSpinner numberOfSeatsSpinner = new JSpinner(seatModel);
-    
-    
-    JButton searchButton = new JButton("Search");
-    searchButton.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            Flight selectedFlight = null; 
-            String routeKey = fromAirportComboBox.getSelectedItem() + "-" + toAirportComboBox.getSelectedItem();
-            Double computedPrice = ROUTE_PRICES.getOrDefault(routeKey, 0.0);
-            showRegistrationPage(selectedFlight, computedPrice, fromAirportComboBox, toAirportComboBox);
-        }
-    });
-
-
-    panel.add(tripTypeLabel);
-    panel.add(oneWayRadioButton);
-    panel.add(new JLabel()); // Empty space for alignment
-    panel.add(roundTripRadioButton);
- 
-    panel.add(fromAirportLabel);
-    panel.add(fromAirportComboBox);
- 
-    panel.add(toAirportLabel);
-    panel.add(toAirportComboBox);
-
- JLabel priceLabel = new JLabel("Price: $0");
- panel.add(new JLabel());
- panel.add(priceLabel);
- 
-    panel.add(airlineLabel);
-    panel.add(airlineComboBox);
- 
-    panel.add(departureDateLabel);
-    JPanel datePanel = new JPanel(new FlowLayout());
-    datePanel.add(dayComboBox);
-    datePanel.add(monthComboBox);
-    datePanel.add(yearComboBox);
-    panel.add(datePanel);
- 
-    panel.add(returnDateLabel);
-    panel.add(returnDatePanel);
-      
-    panel.add(numberOfSeatsLabel);
-    panel.add(numberOfSeatsSpinner);
- 
-    panel.add(new JLabel());
-    
-    panel.add(searchButton);
- 
-    flightSearchDialog.add(panel);
-    flightSearchDialog.pack();
-    flightSearchDialog.setLocationRelativeTo(null);
-    flightSearchDialog.setVisible(true);
-    
-    fromAirportComboBox.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            updatePrice(fromAirportComboBox, toAirportComboBox, priceLabel);
-        }
-    });
-    
-    toAirportComboBox.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            updatePrice(fromAirportComboBox, toAirportComboBox, priceLabel);
-        }
-    });
-    
-}
-
-// Method to update the price label based on selected airports
-private void updatePrice(JComboBox<String> fromAirport, JComboBox<String> toAirport, JLabel priceLabel) {
-    String routeKey = fromAirport.getSelectedItem() + "-" + toAirport.getSelectedItem();
-    Double price = ROUTE_PRICES.getOrDefault(routeKey, 0.0);
-    priceLabel.setText("Price: $" + price);
-}
-private void showRegistrationPage(Flight selectedFlight, double price, JComboBox<String> fromAirport, JComboBox<String> toAirport) {
-   JDialog registrationDialog = new JDialog();
-
-    registrationDialog.setTitle("Enter Registration Details");
-    
-    JPanel panel = new JPanel(new GridLayout(0, 2)); 
-    panel.setSize(700, 400);
-      
-    JLabel priceDisplayLabel = new JLabel("Flight Price: $" + price);
-    panel.add(new JLabel("Flight Price:"));
-    panel.add(priceDisplayLabel);
-
-    JTextField firstNameField = new JTextField();
-    JTextField lastNameField = new JTextField();
-    JTextField phoneNumberField = new JTextField();
-    JTextField emailField = new JTextField();
-    JComboBox<String> seatComboBox = new JComboBox<>(new String[]{"Window", "Middle", "Aisle" });
-    JTextField cardNumberField = new JTextField();
-    JTextField expiryDateField = new JTextField();
-    JTextField cvvField = new JTextField();
-
-    JButton submitButton = new JButton("Submit");
-
-    panel.add(new JLabel("First Name:"));
-    panel.add(firstNameField);
-
-    panel.add(new JLabel("Last Name:"));
-    panel.add(lastNameField);
-
-    panel.add(new JLabel("Phone Number:"));
-    panel.add(phoneNumberField);
-
-    panel.add(new JLabel("Email:"));
-    panel.add(emailField);
-
-    panel.add(new JLabel("Seat Type:"));
-    panel.add(seatComboBox);
-
-    panel.add(new JLabel("Card Number:"));
-    panel.add(cardNumberField);
-
-    panel.add(new JLabel("Expiry Date:"));
-    panel.add(expiryDateField);
-
-    panel.add(new JLabel("CVV:"));
-    panel.add(cvvField);
-
-    panel.add(new JLabel());  // Empty space for alignment
-    panel.add(submitButton);
-
-    registrationDialog.add(panel);
-    registrationDialog.pack();
-    registrationDialog.setLocationRelativeTo(null);
-    registrationDialog.setVisible(true);
-    
-    submitButton.addActionListener(e -> {
-        // Retrieve input values
-       String firstName = firstNameField.getText();
-          String lastName = lastNameField.getText();
-          String phoneNumber = phoneNumberField.getText();
-          String email = emailField.getText();
-          String seatType = (String) seatComboBox.getSelectedItem();
-          String cardNumber = cardNumberField.getText();
-          String expiryDate = expiryDateField.getText();
-          String cvv = cvvField.getText();
-          
-          String origin = (String) fromAirport.getSelectedItem();
-          String destination = (String) toAirport.getSelectedItem();
-          String routeKey = origin + " at " + destination;
-          java.sql.Time departureTime = getDepartureTimeFromRoute(routeKey);
-
-          LocalDate currentDate = LocalDate.now();
-          LocalTime departureLocalTime = departureTime.toLocalTime();
-          LocalDateTime departureDateTime = LocalDateTime.of(currentDate, departureLocalTime);
-          java.sql.Timestamp departureTimestamp = java.sql.Timestamp.valueOf(departureDateTime);
-          int totalSeats = 100;
-
-    
-      if (firstName.isEmpty() || lastName.isEmpty() || phoneNumber.isEmpty() || email.isEmpty() || seatType == null) {
-         JOptionPane.showMessageDialog(null, "Please fill out all the information before pressing submit.");
-         return;
-      }
-      if (!cardNumber.matches("\\d+") || cardNumber.length() != 16) {
-         JOptionPane.showMessageDialog(null, "Please enter a valid card number with 16 digits.");
-         return;
-      }
-      if (!expiryDate.matches("\\d+") || expiryDate.length() != 4) {
-         JOptionPane.showMessageDialog(null, "Please enter a valid expiry date with 4 digits (MMYY).");
-         return;
-      }
-      if (!cvv.matches("\\d+") || cvv.length() != 3) {
-         JOptionPane.showMessageDialog(null, "Please enter a valid CVV with 3 digits.");
-         return;
-      }
-        String reservationNumber = generateReservationNumber();
-              // showRegistrationPage(selectedFlight, computedPrice);
-
-        
-          try {
-           saveToDatabase(firstName, lastName, email, phoneNumber, reservationNumber, price, origin, destination, departureTimestamp, totalSeats);
-            JOptionPane.showMessageDialog(null, "Your reservation number is: " + reservationNumber);
-            registrationDialog.dispose();
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(null, "Unable to save Reservation");
-            ex.printStackTrace(); 
-        }
-    });
-    
-}
-private java.sql.Time getDepartureTimeFromRoute(String route) {
-    // Extract the time substring, e.g., "8:00AM" from "JFK at 8:00AM-LAX at 3:30PM"
-    String timeSubstring = route.split("-")[0].split(" at ")[1];
-
-    // Convert the time substring into a LocalTime object
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("h:mma");
-    LocalTime localTime = LocalTime.parse(timeSubstring, formatter);
-
-    // Convert LocalTime to java.sql.Time
-    return java.sql.Time.valueOf(localTime);
-}
-
-private void saveToDatabase(String firstName, String lastName, String email, String phoneNumber, String reservationNumber, double price, String origin, String destination, java.sql.Timestamp departureTime, int totalSeats) throws SQLException {
-    String table = "passengers";
-    if ("passenger".equals(reservationNumber)) {
-       table = "passengers";
-    }
-
-    String sql = "INSERT INTO " + table + " (first_name, last_name, email, phone_number, reservation_number, price, payment_date, origin, destination, departure_time, total_seats) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    try (Connection connection = getDatabaseConnection();
-         PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-    
-        preparedStatement.setString(1, firstName);
-        preparedStatement.setString(2, lastName);
-        preparedStatement.setString(3, email);
-        preparedStatement.setString(4, phoneNumber); 
-        preparedStatement.setString(5, reservationNumber); 
-        preparedStatement.setDouble(6, price); 
-
-        // Set the current date for the payment_date column
-        java.sql.Date currentDate = java.sql.Date.valueOf(LocalDate.now());
-        preparedStatement.setDate(7, currentDate);
-        preparedStatement.setString(8, origin);
-        preparedStatement.setString(9, destination);
-        preparedStatement.setTimestamp(10, departureTime);
-        preparedStatement.setInt(11, totalSeats);
-
-        preparedStatement.executeUpdate();
-    }
-}
-
-
-private String generateReservationNumber() {
-   String candidateChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-   StringBuilder reservationNumber = new StringBuilder();
-   Random rnd = new Random();
-   while (reservationNumber.length() < 9) {
-      int index = (int) (rnd.nextFloat() * candidateChars.length());
-      reservationNumber.append(candidateChars.charAt(index));
-   }
-   return reservationNumber.toString();
-}
-   
-   public String getReservationNumber() {
-      return this.generateReservationNumber();
-   }
-   
-   @Override
-   public String toString() {
-      return "\nReservation Number: " + getReservationNumber();
-   }
-   
+	    inboxDialog.setLocationRelativeTo(null);
+	    inboxDialog.setVisible(true);
+	}
+     
    private void contactUs() {
     // Create a JDialog (a type of window) for the contact info
       JDialog contactDialog = new JDialog(frame, "Contact Us", true);
@@ -1091,11 +1134,286 @@ private String generateReservationNumber() {
    }   
 }
 
-class Flight {
+class FlightManager{
+	   public void cancelFlight() {
+	       String reservationNumber = JOptionPane.showInputDialog("Enter your reservation number:");
+	       
+	       if (reservationNumber != null && !reservationNumber.trim().isEmpty()) {
+	           try (Connection connection = getDatabaseConnection()) {
+	               // Check if reservation exists
+	               String sql = "SELECT * FROM `jnadb`.`passengers` WHERE `reservation_number` = ?";
+	               PreparedStatement preparedStatement = connection.prepareStatement(sql);
+	               preparedStatement.setString(1, reservationNumber);
+	               ResultSet resultSet = preparedStatement.executeQuery();
+
+	               if (resultSet.next()) {
+	                   double price = resultSet.getDouble("price");
+	                   String origin = resultSet.getString("origin");
+	                   String destination = resultSet.getString("destination");
+
+	                   String message = String.format("Reservation Details:\n\nPrice: $%.2f\nOrigin: %s\nDestination: %s\n\nAre you sure you want to cancel this reservation?", price, origin, destination);
+	                   int confirm = JOptionPane.showConfirmDialog(null, message, "Confirm Cancel", JOptionPane.YES_NO_OPTION);
+	                   
+	                   if (confirm == JOptionPane.YES_OPTION) {
+	                       // Delete reservation
+	                       sql = "DELETE FROM `jnadb`.`passengers` WHERE `reservation_number` = ?";
+	                       preparedStatement = connection.prepareStatement(sql);
+	                       preparedStatement.setString(1, reservationNumber);
+	                       preparedStatement.executeUpdate();
+
+	                       JOptionPane.showMessageDialog(null, "Your reservation has been canceled.");
+	                   }
+	               } else {
+	                   JOptionPane.showMessageDialog(null, "No reservation found with the given number.");
+	               }
+
+	           } catch (SQLException ex) {
+	               ex.printStackTrace();
+	               JOptionPane.showMessageDialog(null, "Error cancelling reservation: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+	           }
+	       } else {
+	           JOptionPane.showMessageDialog(null, "Please provide a valid reservation number.");
+	       }
+	   }
+	   private Connection getDatabaseConnection() {
+	       // Replace with your own MySQL connection details!!!! 
+	      String url = "jdbc:mysql://127.0.0.1:3306/jnadb";
+	      String user = "root";
+	      String pass = "123456789";
+	       
+	      try {
+	         return DriverManager.getConnection(url, user, pass);
+	      } catch (SQLException e) {
+	         e.printStackTrace();
+	         return null;
+	      }
+	   }
 }
 
-class Passenger {
-   }
+class Admin{
+	
+	   public boolean verifyAdminLogin(String email, String password) {
+	       // Assuming you have your connection details and method to get them
+	      Connection connection = null;
+	      PreparedStatement preparedStatement = null;
+	      ResultSet resultSet = null;
+	   
+	      try {
+	         connection = getDatabaseConnection();
+	         String sql = "SELECT * FROM AdminAccounts WHERE email = ? AND password = ?";
+	         preparedStatement = connection.prepareStatement(sql);
+	         preparedStatement.setString(1, email);
+	         preparedStatement.setString(2, password);
+	           
+	         resultSet = preparedStatement.executeQuery();
+	     
+	         if (resultSet.next()) {
+	            return true;
+	         }
+	      } catch (SQLException e) {
+	         e.printStackTrace();
+	      } finally {
+	           // Close resources
+	         try {
+	            if (resultSet != null) resultSet.close();
+	            if (preparedStatement != null) preparedStatement.close();
+	            if (connection != null) connection.close();
+	         } catch (SQLException e) {
+	            e.printStackTrace();
+	         }
+	      }
+	   
+	      return false;
+	   }
 
-class BookedFlight {
-   }
+	   public static boolean verifyAdminCode(String code) {
+		      Connection connection = null;
+		      PreparedStatement preparedStatement = null;
+		      ResultSet resultSet = null;
+		   
+		      try {
+		         connection = getDatabaseConnection();
+		         String sql = "SELECT * FROM specialAdminCodes WHERE code = ?";
+		         preparedStatement = connection.prepareStatement(sql);
+		         preparedStatement.setString(1, code);
+		      
+		         resultSet = preparedStatement.executeQuery();
+		      
+		         return resultSet.next();  // If there's a result, the code is correct
+		      } catch (SQLException e) {
+		         e.printStackTrace();
+		         return false;
+		      } finally {
+		        // Close resources
+		         try {
+		            if (resultSet != null) resultSet.close();
+		            if (preparedStatement != null) preparedStatement.close();
+		            if (connection != null) connection.close();
+		         } catch (SQLException e) {
+		            e.printStackTrace();
+		         }
+		      }
+		   }
+	   private static Connection getDatabaseConnection() {
+	       // Replace with your own MySQL connection details!!!! 
+	      String url = "jdbc:mysql://127.0.0.1:3306/jnadb";
+	      String user = "root";
+	      String pass = "123456789";
+	       
+	      try {
+	         return DriverManager.getConnection(url, user, pass);
+	      } catch (SQLException e) {
+	         e.printStackTrace();
+	         return null;
+	      }
+	   }
+	   public void viewGrossSales(int fromMonth, int fromYear, int toMonth, int toYear) {
+	       try (Connection connection = getDatabaseConnection()) {
+	           String sql = "SELECT SUM(price) as total_sales FROM jnadb.passengers WHERE (MONTH(payment_date) BETWEEN ? AND ?) AND (YEAR(payment_date) BETWEEN ? AND ?)";
+	           
+	           PreparedStatement preparedStatement = connection.prepareStatement(sql);
+	           preparedStatement.setInt(1, fromMonth);
+	           preparedStatement.setInt(2, toMonth);
+	           preparedStatement.setInt(3, fromYear);
+	           preparedStatement.setInt(4, toYear);
+	           
+	           ResultSet resultSet = preparedStatement.executeQuery();
+	           if (resultSet.next()) {
+	               double totalSales = resultSet.getDouble("total_sales");
+	               JOptionPane.showMessageDialog(null, "Total Gross Sales from " + fromMonth + "/" + fromYear + " to " + toMonth + "/" + toYear + ": $" + totalSales);
+	           }
+	       } catch (SQLException ex) {
+	           ex.printStackTrace();
+	           JOptionPane.showMessageDialog(null, "Error fetching gross sales: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+	       }
+	   }
+
+	   public void showFlightLogReport() {
+	       JDialog reportDialog = new JDialog();
+	       reportDialog.setTitle("Flight Log Report");
+	       reportDialog.setSize(700, 400);
+
+	       // Updated the table columns to match the passengers table
+	       String[] columnNames = {"Passenger ID", "First Name", "Last Name", "Email", "Phone Number", "Reservation Number", "Price", "Payment Date", "Origin", "Destination", "Departure Time", "Total Seats"};
+	       DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+	       JTable flightLogTable = new JTable(tableModel);
+
+	       try (Connection connection = getDatabaseConnection()) {
+	           // Update the SQL query to fetch data from the passengers table
+	           String sql = "SELECT * FROM jnadb.passengers";
+	           PreparedStatement preparedStatement = connection.prepareStatement(sql);
+	           ResultSet resultSet = preparedStatement.executeQuery();
+
+	           while (resultSet.next()) {
+	               int passengerId = resultSet.getInt("passenger_id");
+	               String firstName = resultSet.getString("first_name");
+	               String lastName = resultSet.getString("last_name");
+	               String email = resultSet.getString("email");
+	               String phoneNumber = resultSet.getString("phone_number");
+	               String reservationNumber = resultSet.getString("reservation_number");
+	               double price = resultSet.getDouble("price");
+	               Date paymentDate = resultSet.getDate("payment_date");
+	               String origin = resultSet.getString("origin");
+	               String destination = resultSet.getString("destination");
+	               Time departureTime = resultSet.getTime("departure_time");
+	               int totalSeats = resultSet.getInt("total_seats");
+
+	               tableModel.addRow(new Object[]{passengerId, firstName, lastName, email, phoneNumber, reservationNumber, price, paymentDate, origin, destination, departureTime, totalSeats});
+	           }
+	       } catch (SQLException ex) {
+	           ex.printStackTrace();
+	           JOptionPane.showMessageDialog(reportDialog, "Error fetching flight log report: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+	       }
+
+	       JScrollPane scrollPane = new JScrollPane(flightLogTable);
+	       reportDialog.add(scrollPane, BorderLayout.CENTER);
+
+	       reportDialog.setLocationRelativeTo(null);
+	       reportDialog.setVisible(true);
+	   }
+}
+
+ class Airline {
+    private String airlineName;
+    private String airlineCode;
+    private List<Flight> flights;
+
+    
+    public Airline(String airlineName, String airlineCode) {
+        this.airlineName = airlineName;
+        this.airlineCode = airlineCode;
+    }
+    public String getAirlineName() {
+        return airlineName;
+    }
+
+    public void setAirlineName(String airlineName) {
+        this.airlineName = airlineName;
+    }
+
+    public String getAirlineCode() {
+        return airlineCode;
+    }
+
+    public void setAirlineCode(String airlineCode) {
+        this.airlineCode = airlineCode;
+    }
+
+    public List<Flight> getFlights() {
+        return flights;
+    }
+
+    public void setFlights(List<Flight> flights) {
+        this.flights = flights;
+    }
+}
+ 
+ class Airport {
+    private String airportCode;
+    private String cityName;
+    private String countryName;
+    private List<Flight> flights;
+
+    public Airport(String airportCode, String cityName, String countryName) {
+        this.airportCode = airportCode;
+        this.cityName = cityName;
+        this.countryName = countryName;
+    }
+
+    public String getAirportCode() {
+        return airportCode;
+    }
+
+    public void setAirportCode(String airportCode) {
+        this.airportCode = airportCode;
+    }
+
+    public String getCityName() {
+        return cityName;
+    }
+
+    public void setCityName(String cityName) {
+        this.cityName = cityName;
+    }
+
+    public String getCountryName() {
+        return countryName;
+    }
+
+    public void setCountryName(String countryName) {
+        this.countryName = countryName;
+    }
+
+    public List<Flight> getFlights() {
+        return flights;
+    }
+
+    public void setFlights(List<Flight> flights) {
+        this.flights = flights;
+    }
+}
+ 
+ class Passenger {
+	 
+		
+ }
