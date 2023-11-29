@@ -1,0 +1,9 @@
+{
+  "rules": {
+    ".read": "true",
+    ".write": "true",
+    "users": {
+      ".indexOn": ["companyId_ssn", "companyId_adminId", "companyId_adminId_password"]
+    }
+  }
+}
